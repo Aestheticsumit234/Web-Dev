@@ -3,26 +3,30 @@ import { open, readdir, readFile } from "fs/promises";
 import http from "http";
 import mime from "mime-types";
 
-async function severDirectory(req, res, BoilerplateCode) {
-  const [url, queryString] = req.url.split("?");
+async function severDirectory(req, res) {
+  const [url] = req.url.split("?");
   const allAssets = await readdir(`./storage${url}`, { withFileTypes: true });
-  let dynamicHTML = "";
-  allAssets.forEach((asset) => {
-    const isDir = asset.isDirectory();
-    const name = asset.name;
-    dynamicHTML += `<div>${name}
-            <a href="${url === "/" ? "" : url}/${name}?action=open&test=1234">Open</a>
-             ${isDir ? "" : `<a href="${url === "/" ? "" : url}/${name}?action=download">Download</a>`}
-        </div>`;
-  });
-  return res.end(BoilerplateCode.replace("${dynamicHTML}", dynamicHTML));
+  res.setHeader("Content-Type", "application/json");
+  return res.end(JSON.stringify(allAssets));
 }
 
 const server = http.createServer(async (req, res) => {
-  const BoilerplateCode = await readFile("./index.html", "utf-8");
-  if (req.url === "/favicon.ico") return res.end("fevicon is not available!");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  if (req.url === "/favicon.ico") {
+    res.statusCode = 204;
+    return res.end(" Favicon not found");
+  }
+
   if (req.url === "/") {
-    await severDirectory(req, res, BoilerplateCode);
+    await severDirectory(req, res);
   } else {
     const [url, queryString] = req.url.split("?");
     console.log({ url, queryString });
@@ -43,7 +47,7 @@ const server = http.createServer(async (req, res) => {
       const stats = await file.stat();
       if (stats.isDirectory()) {
         await file.close();
-        return await severDirectory(req, res, BoilerplateCode);
+        return await severDirectory(req, res);
       }
 
       res.setHeader("Content-Type", mime.lookup(url));
