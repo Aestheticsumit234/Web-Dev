@@ -1,17 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import {
   Folder,
   FileText,
   ArrowLeft,
-  ExternalLink,
   Download,
   ChevronRight,
   HardDrive,
+  UploadCloud,
+  LayoutGrid,
+  List as ListIcon,
+  X,
+  Maximize,
+  Trash,
+  PencilLine,
 } from "lucide-react";
+import FileItem from "./components/FileItem";
 
 export default function App() {
   const [items, setItems] = useState([]);
   const [path, setPath] = useState([]);
+  const [view, setView] = useState("grid");
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   const currentPath = path.join("/");
 
@@ -34,129 +45,182 @@ export default function App() {
     setPath(newPath);
     loadData(newPath.join("/"));
   };
-
-  const goBack = () => {
-    const newPath = path.slice(0, -1);
-    setPath(newPath);
-    loadData(newPath.join("/"));
-  };
-
   const isFolder = (name) => !name.includes(".");
 
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const XHR = new XMLHttpRequest();
+    XHR.open("POST", "http://localhost:3000", true);
+    XHR.setRequestHeader("filename", file.name);
+    XHR.upload.addEventListener("progress", (e) => {
+      setUploadProgress(Math.round((e.loaded / e.total) * 100));
+    });
+    XHR.addEventListener("load", () => {
+      setUploadProgress(null);
+      loadData(path.join("/"));
+    });
+    XHR.send(file);
+  };
+  async function handleDelete(fileName) {
+    const response = await fetch(`http://localhost:3000/delete`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: fileName,
+    });
+
+    const data = await response.text();
+    console.log(data);
+    loadData(path.join("/"));
+  }
+
   return (
-    <div className="min-h-screen bg-[#F8F9FB] text-slate-800 font-sans">
-      {/* Top Navbar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <HardDrive className="text-white w-5 h-5" />
+    <div className="flex h-screen bg-[#F8F9FB] text-slate-900 font-sans antialiased relative">
+      {previewFile && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-5xl h-full rounded-[24px] overflow-hidden flex flex-col shadow-2xl">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white">
+              <div className="flex items-center gap-3">
+                <FileText className="text-indigo-600" size={20} />
+                <span className="font-bold text-slate-800 truncate max-w-md">
+                  {previewFile}
+                </span>
+              </div>
+              <button
+                onClick={() => setPreviewFile(null)}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              My Drive
-            </h1>
+            <div className="flex-1 bg-slate-50">
+              <iframe
+                src={`http://localhost:3000/${currentPath}/${previewFile}?action=open`}
+                className="w-full h-full border-none"
+                title="File Preview"
+              />
+            </div>
           </div>
         </div>
-      </nav>
+      )}
 
-      <main className="max-w-7xl mx-auto p-6">
-        {/* Breadcrumbs & Navigation */}
-        <div className="flex items-center gap-4 mb-8">
-          {path.length > 0 ? (
+      <main className="flex-1 flex flex-col min-w-0">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-50">
+          <div className="flex items-center gap-4">
+            <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100">
+              <HardDrive size={18} />
+            </div>
+            <span className="font-bold text-lg tracking-tight">NexusDrive</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setView("grid")}
+                className={`p-1.5 rounded-md transition-all ${view === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setView("list")}
+                className={`p-1.5 rounded-md transition-all ${view === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
+              >
+                <ListIcon size={16} />
+              </button>
+            </div>
             <button
-              onClick={goBack}
-              className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg shadow-sm transition-all"
+              onClick={() => fileInputRef.current.click()}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm font-medium">Back</span>
+              <UploadCloud size={16} />
+              <span>Upload</span>
             </button>
-          ) : null}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleUpload}
+              className="hidden"
+            />
+          </div>
+        </header>
 
-          <div className="flex items-center text-sm font-medium text-slate-500 overflow-hidden">
-            <span
-              className="hover:text-blue-600 cursor-pointer"
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex items-center text-sm font-medium mb-8 bg-white w-fit px-4 py-2 rounded-xl border border-slate-200">
+            <button
               onClick={() => {
                 setPath([]);
                 loadData("");
               }}
+              className="text-slate-400 hover:text-indigo-600"
             >
-              Root
-            </span>
+              Home
+            </button>
             {path.map((p, i) => (
               <div key={i} className="flex items-center">
-                <ChevronRight className="w-4 h-4 mx-1 text-slate-300" />
-                <span className="text-slate-900 truncate max-w-[150px]">
+                <ChevronRight size={14} className="mx-1 text-slate-300" />
+                <span
+                  className={
+                    i === path.length - 1 ? "text-slate-900" : "text-slate-500"
+                  }
+                >
                   {p}
                 </span>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Grid Display */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-          {items.map((item, index) => (
-            <div
-              key={index}
-              onClick={() => isFolder(item.name) && loadFolder(item.name)}
-              className="group bg-white border border-slate-200 p-4 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer relative"
-            >
-              {/* Icon Container */}
-              <div className="aspect-square flex items-center justify-center mb-4 bg-slate-50 rounded-xl group-hover:bg-blue-50 transition-colors">
-                {isFolder(item.name) ? (
-                  <Folder className="w-12 h-12 text-blue-500 fill-blue-500/10" />
-                ) : (
-                  <FileText className="w-12 h-12 text-slate-400" />
-                )}
+          {uploadProgress !== null && (
+            <div className="mb-6 bg-white border border-indigo-100 p-4 rounded-xl shadow-sm">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-indigo-600 uppercase">
+                  Uploading...
+                </span>
+                <span className="text-xs font-bold text-indigo-600">
+                  {uploadProgress}%
+                </span>
               </div>
-
-              {/* Name */}
-              <p
-                className="font-semibold text-sm text-slate-700 truncate w-full mb-4"
-                title={item.name}
-              >
-                {item.name}
-              </p>
-
-              {/* Actions */}
-              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                {isFolder(item.name) ? (
-                  <button
-                    onClick={() => loadFolder(item.name)}
-                    className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
-                  >
-                    Open
-                  </button>
-                ) : (
-                  <>
-                    <a
-                      href={`http://localhost:3000/${currentPath}/${item.name}?action=open`}
-                      className="flex-1 flex items-center justify-center p-2 bg-slate-50 hover:bg-blue-600 text-slate-500 hover:text-white rounded-lg transition-all"
-                      title="Open"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                    <a
-                      href={`http://localhost:3000/${currentPath}/${item.name}?action=download`}
-                      className="flex-1 flex items-center justify-center p-2 bg-slate-50 hover:bg-emerald-600 text-slate-500 hover:text-white rounded-lg transition-all"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                  </>
-                )}
+              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-indigo-600 h-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
               </div>
             </div>
-          ))}
-        </div>
+          )}
 
-        {/* Empty State */}
-        {items.length === 0 && (
-          <div className="text-center py-20">
-            <Folder className="w-16 h-16 text-slate-200 mx-auto mb-4" />
-            <h3 className="text-slate-500 font-medium">This folder is empty</h3>
-          </div>
-        )}
+          {items.length > 0 ? (
+            <div
+              className={
+                view === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+                  : "bg-white border border-slate-200 rounded-xl divide-y divide-slate-100"
+              }
+            >
+              {items.map((item, index) => (
+                <FileItem
+                  key={index}
+                  item={item}
+                  view={view}
+                  handleDelete={handleDelete}
+                  onOpen={() =>
+                    isFolder(item.name)
+                      ? loadFolder(item.name)
+                      : setPreviewFile(item.name)
+                  }
+                  onPreview={() => setPreviewFile(item.name)}
+                  currentPath={currentPath}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-24 text-slate-300">
+              <Folder size={64} strokeWidth={1} className="mb-2 opacity-20" />
+              <p className="font-medium text-slate-400">Directory is empty</p>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
