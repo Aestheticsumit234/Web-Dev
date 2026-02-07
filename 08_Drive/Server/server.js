@@ -1,13 +1,10 @@
-import { log } from "console";
 import { createWriteStream } from "fs";
 import { open, readdir, rename, rm } from "fs/promises";
 import http from "http";
 import mime from "mime-types";
 
-async function severDirectory(req, res) {
-  const [url] = req.url.split("?");
-  const path = `./storage${decodeURIComponent(url)}`;
-
+async function severDirectory(req, res, customPath) {
+  const path = customPath || `./storage`;
   try {
     const allAssets = await readdir(path, { withFileTypes: true });
     res.setHeader("Content-Type", "application/json");
@@ -40,27 +37,14 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  if (req.url === "/favicon.ico") {
-    res.statusCode = 204;
-    return res.end("Favicon not found");
-  }
+  const [url, queryString] = req.url.split("?");
+  const decodedPath = `./storage${decodeURIComponent(url)}`.replace(
+    /\/+/g,
+    "/",
+  );
 
   if (req.method === "GET") {
-    const [url, queryString] = req.url.split("?");
-
-    if (url === "/") {
-      return await severDirectory(req, res);
-    }
-
-    const queryParams = {};
-    if (queryString) {
-      queryString.split("&").forEach((param) => {
-        const [k, v] = param.split("=");
-        queryParams[k] = v;
-      });
-    }
-
-    const decodedPath = `./storage${decodeURIComponent(url)}`;
+    if (url === "/favicon.ico") return ((res.statusCode = 204), res.end());
 
     let file;
     try {
@@ -69,17 +53,18 @@ const server = http.createServer(async (req, res) => {
 
       if (stats.isDirectory()) {
         await file.close();
-        return await severDirectory(req, res);
+        return await severDirectory(req, res, decodedPath);
       }
 
-      const mimeType = mime.lookup(url) || "application/octet-stream";
+      const queryParams = new URLSearchParams(queryString);
+      const mimeType = mime.lookup(decodedPath) || "application/octet-stream";
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Content-Length", stats.size);
 
-      if (queryParams.action === "download") {
+      if (queryParams.get("action") === "download") {
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename="${url.split("/").pop()}"`,
+          `attachment; filename="${decodedPath.split("/").pop()}"`,
         );
       }
 
@@ -87,7 +72,7 @@ const server = http.createServer(async (req, res) => {
       res.end(fileData);
     } catch (err) {
       res.statusCode = 404;
-      res.end("File not found");
+      res.end("Not found");
     } finally {
       if (file) await file.close();
     }
@@ -95,75 +80,46 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "DELETE") {
     let body = "";
-
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
-
+    req.on("data", (chunk) => (body += chunk.toString()));
     req.on("end", async () => {
       try {
         const data = JSON.parse(body);
-        const relativePath = data.filePath;
-
-        const targetPath = `./storage/${relativePath}`;
-
-        console.log(`Attempting to delete: ${targetPath}`);
-
+        const targetPath = `./storage/${data.filePath}`.replace(/\/+/g, "/");
         await rm(targetPath, { recursive: true, force: true });
-
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end(`Deleted: ${relativePath}`);
+        res.end("Deleted");
       } catch (err) {
-        console.error("Delete Error:", err);
-        res.writeHead(500);
-        res.end("Failed to delete file");
+        res.statusCode = 500;
+        res.end("Delete error");
       }
     });
   }
 
   if (req.method === "POST") {
     const fileName = req.headers.filename;
-    let count = 0;
-    if (!fileName) {
-      res.statusCode = 400;
-      return res.end("Filename header missing");
-    }
+    if (!fileName) return ((res.statusCode = 400), res.end("No filename"));
 
-    const writeStream = createWriteStream(`./storage/${fileName}`);
-    count++;
+    const uploadPath = `${decodedPath}/${fileName}`.replace(/\/+/g, "/");
+    const writeStream = createWriteStream(uploadPath);
     req.pipe(writeStream);
-
-    req.on("end", () => {
-      console.log(count);
-      res.end("File uploaded successfully");
-    });
+    req.on("end", () => res.end("Uploaded"));
   }
+
   if (req.method === "PATCH") {
     let body = "";
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
-
+    req.on("data", (chunk) => (body += chunk.toString()));
     req.on("end", async () => {
       try {
         const data = JSON.parse(body);
-        const oldPath = `./storage/${data.oldName}`;
-        const newPath = `./storage/${data.newName}`;
-
-        await rename(oldPath, newPath);
-
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("Rename successful");
+        const oldP = `./storage/${data.oldName}`.replace(/\/+/g, "/");
+        const newP = `./storage/${data.newName}`.replace(/\/+/g, "/");
+        await rename(oldP, newP);
+        res.end("Renamed");
       } catch (err) {
-        console.error(err);
-        res.writeHead(500);
-        res.end("Rename failed: " + err.message);
+        res.statusCode = 500;
+        res.end(err.message);
       }
     });
-    return;
   }
 });
 
-server.listen(3000, () => {
-  console.log("Server running at http://localhost:3000/");
-});
+server.listen(3000, () => console.log("Server: http://localhost:3000/"));
