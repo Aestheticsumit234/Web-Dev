@@ -12,6 +12,8 @@ import {
   Maximize,
   Trash,
   PencilLine,
+  Search,
+  CheckCircle,
 } from "lucide-react";
 import FileItem from "./components/FileItem";
 import HardDrive from "../public/nexusD.png";
@@ -23,7 +25,7 @@ export default function App() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const fileInputRef = useRef(null);
-  const [renamingFile, setRenamingFile] = useState("");
+  const [renamingFileName, setRenamingFileName] = useState("");
 
   const currentPath = path.join("/");
 
@@ -63,34 +65,47 @@ export default function App() {
     });
     XHR.send(file);
   };
-  async function handleDelete(fileName) {
-    const response = await fetch(`http://localhost:3000/delete`, {
+  const handleDelete = async (fileName) => {
+    const fullPathForDeletion =
+      path.length > 0 ? `${path.join("/")}/${fileName}` : fileName;
+
+    const response = await fetch("http://localhost:3000/", {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: fileName,
+      body: JSON.stringify({ filePath: fullPathForDeletion }),
+      headers: { "Content-Type": "application/json" },
     });
 
-    const data = await response.text();
-    console.log(data);
-    loadData(path.join("/"));
-  }
+    if (response.ok) {
+      loadData(path.join("/"));
+    }
+  };
 
-  async function handleRename(oldName) {
-    const response = await fetch(`http://localhost:3000/rename`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ oldName, newName: renamingFile }),
-    });
-    setRenamingFile(oldName);
-    const data = await response.text();
-    console.log(data);
-    loadData(path.join("/"));
+  async function handleRenameInput(oldName) {
+    console.log("oldName--->", oldName, "New Name--->", renamingFileName);
+    setRenamingFileName(oldName);
   }
+  async function handleSaveFileInput(oldName) {
+    try {
+      const response = await fetch(`http://localhost:3000/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          oldName: oldName,
+          newName: renamingFileName,
+        }),
+      });
 
+      if (response.ok) {
+        console.log("Renamed successfully");
+        setRenamingFileName("");
+        loadData(path.join("/"));
+      }
+    } catch (error) {
+      console.error("Failed to rename:", error);
+    }
+  }
   return (
     <div className="flex h-screen bg-[#F8F9FB] text-slate-900 font-sans antialiased relative">
       {previewFile && (
@@ -160,19 +175,30 @@ export default function App() {
             >
               Home
             </button>
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-              <button
-                onClick={() => setView("grid")}
-                className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                onClick={() => setView("list")}
-                className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
-              >
-                <ListIcon size={16} />
-              </button>
+            <div className="flex bg-slate-100 p-1 rounded-lg items-center gap-6 border border-slate-200">
+              {/* Rename input element yaha hai-----------------------> */}
+
+              <input
+                type="text"
+                className=" outline-none rounded-md "
+                onChange={(e) => setRenamingFileName(e.target.value)}
+                value={renamingFileName}
+              />
+
+              <div>
+                <button
+                  onClick={() => setView("grid")}
+                  className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button
+                  onClick={() => setView("list")}
+                  className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
+                >
+                  <ListIcon size={16} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -209,9 +235,8 @@ export default function App() {
                   item={item}
                   view={view}
                   handleDelete={handleDelete}
-                  handleRename={handleRename}
-                  renamingFile={renamingFile}
-                  setRenamingFile={setRenamingFile}
+                  handleRenameInput={handleRenameInput} // iska koi use abhi nhi ho rha hai
+                  handleSaveFileInput={handleSaveFileInput}
                   onOpen={() =>
                     isFolder(item.name)
                       ? loadFolder(item.name)

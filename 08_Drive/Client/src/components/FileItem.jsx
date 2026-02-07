@@ -1,4 +1,5 @@
 import {
+  CheckCheck,
   Download,
   FileText,
   Folder,
@@ -15,11 +16,11 @@ function FileItem({
   onPreview,
   currentPath,
   handleDelete,
-  handleRename,
-  renamingFile,
-  setRenamingFile,
+  handleRenameInput,
+  handleSaveFileInput,
 }) {
   const isFolder = !item.name.includes(".");
+  const [isRenaming, setIsRenaming] = React.useState(false);
 
   if (view === "list") {
     return (
@@ -62,6 +63,7 @@ function FileItem({
           <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all">
             <Trash size={16} />
           </button>
+
           <button className="p-2 text-slate-400 hover:text-yellow-600 hover:bg-white rounded-lg transition-all">
             <PencilLine size={16} />
           </button>
@@ -97,10 +99,26 @@ function FileItem({
             </button>
             <div>
               <button
-                onClick={() => handleRename(item)}
+                // yaha Rename ki method call kr rha hu
                 className=" py-2 px-2 cursor-pointer text-xs font-bold bg-slate-50 text-slate-600 rounded-lg hover:bg-yellow-600 hover:text-white transition-all"
               >
-                <PencilLine size={16} />
+                {isRenaming ? (
+                  <CheckCheck
+                    onClick={() => {
+                      handleSaveFileInput(item.name);
+                      setIsRenaming(false);
+                    }}
+                    size={16}
+                  />
+                ) : (
+                  <PencilLine
+                    onClick={() => {
+                      setIsRenaming(true);
+                      handleRenameInput(item.name);
+                    }}
+                    size={16}
+                  />
+                )}
               </button>
             </div>
           </div>
@@ -126,6 +144,7 @@ function FileItem({
             >
               <Trash size={16} />
             </button>
+
             <button className="flex-1 flex items-center justify-center py-2 bg-slate-50 text-slate-500 hover:bg-yellow-600 hover:text-white rounded-lg transition-all">
               <PencilLine size={16} />
             </button>
