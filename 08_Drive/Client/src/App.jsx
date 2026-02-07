@@ -1,19 +1,11 @@
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Folder,
-  FileText,
-  ArrowLeft,
-  Download,
-  ChevronRight,
   UploadCloud,
   LayoutGrid,
   List as ListIcon,
   X,
-  Maximize,
-  Trash,
-  PencilLine,
-  Search,
-  CheckCircle,
+  FileText,
 } from "lucide-react";
 import FileItem from "./components/FileItem";
 import HardDrive from "../public/nexusD.png";
@@ -24,8 +16,8 @@ export default function App() {
   const [view, setView] = useState("grid");
   const [uploadProgress, setUploadProgress] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
-  const fileInputRef = useRef(null);
   const [renamingFileName, setRenamingFileName] = useState("");
+  const fileInputRef = useRef(null);
 
   const currentPath = path.join("/");
 
@@ -35,224 +27,183 @@ export default function App() {
       const data = await response.json();
       setItems(data);
     } catch (error) {
-      console.error("Failed to load drive data:", error);
+      console.error("Load error:", error);
     }
   }
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(currentPath);
+  }, [currentPath]);
 
-  const loadFolder = (folderName) => {
-    const newPath = [...path, folderName];
-    setPath(newPath);
-    loadData(newPath.join("/"));
-  };
-  const isFolder = (name) => !name.includes(".");
+  const loadFolder = (folderName) => setPath([...path, folderName]);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const XHR = new XMLHttpRequest();
-    XHR.open("POST", "http://localhost:3000", true);
+    XHR.open("POST", `http://localhost:3000/${currentPath}`, true);
     XHR.setRequestHeader("filename", file.name);
     XHR.upload.addEventListener("progress", (e) => {
       setUploadProgress(Math.round((e.loaded / e.total) * 100));
     });
     XHR.addEventListener("load", () => {
       setUploadProgress(null);
-      loadData(path.join("/"));
+      loadData(currentPath);
     });
     XHR.send(file);
   };
-  const handleDelete = async (fileName) => {
-    const fullPathForDeletion =
-      path.length > 0 ? `${path.join("/")}/${fileName}` : fileName;
 
+  const handleDelete = async (fileName) => {
+    const fullPath = currentPath ? `${currentPath}/${fileName}` : fileName;
     const response = await fetch("http://localhost:3000/", {
       method: "DELETE",
-      body: JSON.stringify({ filePath: fullPathForDeletion }),
+      body: JSON.stringify({ filePath: fullPath }),
       headers: { "Content-Type": "application/json" },
     });
-
-    if (response.ok) {
-      loadData(path.join("/"));
-    }
+    if (response.ok) loadData(currentPath);
   };
 
-  async function handleRenameInput(oldName) {
-    console.log("oldName--->", oldName, "New Name--->", renamingFileName);
-    setRenamingFileName(oldName);
-  }
-  async function handleSaveFileInput(oldName) {
+  const handleRenameInput = (name) => setRenamingFileName(name);
+
+  const handleSaveFileInput = async (oldName) => {
+    const oldFullPath = currentPath ? `${currentPath}/${oldName}` : oldName;
+    const newFullPath = currentPath
+      ? `${currentPath}/${renamingFileName}`
+      : renamingFileName;
+
     try {
       const response = await fetch(`http://localhost:3000/`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          oldName: oldName,
-          newName: renamingFileName,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldName: oldFullPath, newName: newFullPath }),
       });
-
       if (response.ok) {
-        console.log("Renamed successfully");
         setRenamingFileName("");
-        loadData(path.join("/"));
+        loadData(currentPath);
       }
     } catch (error) {
-      console.error("Failed to rename:", error);
+      console.error(error);
     }
-  }
+  };
+
   return (
-    <div className="flex h-screen bg-[#F8F9FB] text-slate-900 font-sans antialiased relative">
+    <div className="flex h-screen bg-[#F8F9FB] text-slate-900 font-sans relative">
       {previewFile && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-5xl h-full rounded-[24px] overflow-hidden flex flex-col shadow-2xl">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl h-full rounded-[24px] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <FileText className="text-indigo-600" size={20} />
-                <span className="font-bold text-slate-800 truncate max-w-md">
-                  {previewFile}
-                </span>
+                <span className="font-bold">{previewFile}</span>
               </div>
               <button
                 onClick={() => setPreviewFile(null)}
-                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                className="p-2 hover:bg-slate-100 rounded-full"
               >
-                <X size={20} />
+                <X />
               </button>
             </div>
-            <div className="flex-1 bg-slate-50">
-              <iframe
-                src={`http://localhost:3000/${currentPath}/${previewFile}?action=open`}
-                className="w-full h-full border-none"
-                title="File Preview"
-              />
-            </div>
+            <iframe
+              src={`http://localhost:3000/${currentPath}/${previewFile}?action=open`}
+              className="flex-1 w-full border-none"
+            />
           </div>
         </div>
       )}
 
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-50">
+      <main className="flex-1 flex flex-col">
+        <header className="h-16 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-50">
           <div className="flex items-center gap-4">
-            <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100">
-              <img src={HardDrive} className="w-5" alt="" />
-            </div>
-            <span className="hidden sm:block font-bold text-lg tracking-tight">
-              NexusDrive
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => fileInputRef.current.click()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
-            >
-              <UploadCloud size={16} />
-              <span>Upload</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleUpload}
-              className="hidden"
+            <img
+              src={HardDrive}
+              className="w-10 bg-indigo-600 p-1 rounded cursor-pointer"
+              alt="logo"
             />
+            <span className="font-bold text-lg">NexusDrive</span>
           </div>
+          <button
+            onClick={() => fileInputRef.current.click()}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <UploadCloud size={16} /> Upload
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleUpload}
+            className="hidden"
+          />
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="flex items-center justify-between text-sm font-medium mb-8 w-full px-4 py-2 ">
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-8">
             <button
-              onClick={() => {
-                setPath([]);
-                loadData("");
-              }}
+              onClick={() => setPath([])}
               className="text-slate-400 hover:text-indigo-600"
             >
-              Home
+              Home {path.length > 0 && ` / ${path.join(" / ")}`}
             </button>
-            <div className="flex bg-slate-100 p-1 rounded-lg items-center gap-6 border border-slate-200">
-              {/* Rename input element yaha hai-----------------------> */}
-
+            <div className="flex bg-slate-100 p-1 rounded-lg gap-2">
               <input
                 type="text"
-                className=" outline-none rounded-md "
-                onChange={(e) => setRenamingFileName(e.target.value)}
+                className="px-2 py-1 text-sm border rounded outline-none"
+                placeholder="Rename to..."
                 value={renamingFileName}
+                onChange={(e) => setRenamingFileName(e.target.value)}
               />
-
-              <div>
-                <button
-                  onClick={() => setView("grid")}
-                  className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
-                >
-                  <LayoutGrid size={16} />
-                </button>
-                <button
-                  onClick={() => setView("list")}
-                  className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
-                >
-                  <ListIcon size={16} />
-                </button>
-              </div>
+              <button
+                onClick={() => setView("grid")}
+                className={`p-1.5 rounded ${view === "grid" ? "bg-white text-indigo-600" : "text-slate-400"}`}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setView("list")}
+                className={`p-1.5 rounded ${view === "list" ? "bg-white text-indigo-600" : "text-slate-400"}`}
+              >
+                <ListIcon size={16} />
+              </button>
             </div>
           </div>
 
-          {uploadProgress !== null && (
-            <div className="mb-6 bg-white border border-indigo-100 p-4 rounded-xl shadow-sm">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-indigo-600 uppercase">
-                  Uploading...
-                </span>
-                <span className="text-xs font-bold text-indigo-600">
-                  {uploadProgress}%
-                </span>
+          {uploadProgress && (
+            <div className="mb-4 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+              <div className="flex justify-between text-xs font-bold text-indigo-600 mb-1">
+                <span>Uploading...</span>
+                <span>{uploadProgress}%</span>
               </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                  className="bg-indigo-600 h-full transition-all duration-300"
+                  className="h-full bg-indigo-600 transition-all"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             </div>
           )}
 
-          {items.length > 0 ? (
-            <div
-              className={
-                view === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
-                  : "bg-white border border-slate-200 rounded-xl divide-y divide-slate-100"
-              }
-            >
-              {items.map((item, index) => (
-                <FileItem
-                  key={index}
-                  item={item}
-                  view={view}
-                  handleDelete={handleDelete}
-                  handleRenameInput={handleRenameInput} // iska koi use abhi nhi ho rha hai
-                  handleSaveFileInput={handleSaveFileInput}
-                  onOpen={() =>
-                    isFolder(item.name)
-                      ? loadFolder(item.name)
-                      : setPreviewFile(item.name)
-                  }
-                  onPreview={() => setPreviewFile(item.name)}
-                  currentPath={currentPath}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-24 text-slate-300">
-              <Folder size={64} strokeWidth={1} className="mb-2 opacity-20" />
-              <p className="font-medium text-slate-400">Directory is empty</p>
-            </div>
-          )}
+          <div
+            className={
+              view === "grid"
+                ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"
+                : "bg-white border rounded-xl divide-y"
+            }
+          >
+            {items.map((item, idx) => (
+              <FileItem
+                key={idx}
+                item={item}
+                view={view}
+                currentPath={currentPath}
+                handleDelete={handleDelete}
+                handleRenameInput={handleRenameInput}
+                handleSaveFileInput={handleSaveFileInput}
+                onOpen={() =>
+                  item.isDir ? loadFolder(item.name) : setPreviewFile(item.name)
+                }
+                onPreview={() => setPreviewFile(item.name)}
+              />
+            ))}
+          </div>
         </div>
       </main>
     </div>
