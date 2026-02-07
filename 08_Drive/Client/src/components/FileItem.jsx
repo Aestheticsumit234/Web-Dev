@@ -15,6 +15,9 @@ function FileItem({
   onPreview,
   currentPath,
   handleDelete,
+  handleRename,
+  renamingFile,
+  setRenamingFile,
 }) {
   const isFolder = !item.name.includes(".");
 
@@ -85,12 +88,22 @@ function FileItem({
 
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
         {isFolder ? (
-          <button
-            onClick={onOpen}
-            className="w-full py-2 text-xs font-bold bg-slate-50 text-slate-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
-          >
-            Open Folder
-          </button>
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={onOpen}
+              className="w-full cursor-pointer py-2 text-xs font-bold bg-slate-50 text-slate-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
+            >
+              Open Folder
+            </button>
+            <div>
+              <button
+                onClick={() => handleRename(item)}
+                className=" py-2 px-2 cursor-pointer text-xs font-bold bg-slate-50 text-slate-600 rounded-lg hover:bg-yellow-600 hover:text-white transition-all"
+              >
+                <PencilLine size={16} />
+              </button>
+            </div>
+          </div>
         ) : (
           <>
             <button

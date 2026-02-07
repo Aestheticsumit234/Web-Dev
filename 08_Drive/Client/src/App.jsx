@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Download,
   ChevronRight,
-  HardDrive,
   UploadCloud,
   LayoutGrid,
   List as ListIcon,
@@ -15,6 +14,7 @@ import {
   PencilLine,
 } from "lucide-react";
 import FileItem from "./components/FileItem";
+import HardDrive from "../public/nexusD.png";
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -23,6 +23,7 @@ export default function App() {
   const [uploadProgress, setUploadProgress] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [renamingFile, setRenamingFile] = useState("");
 
   const currentPath = path.join("/");
 
@@ -76,6 +77,20 @@ export default function App() {
     loadData(path.join("/"));
   }
 
+  async function handleRename(oldName) {
+    const response = await fetch(`http://localhost:3000/rename`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ oldName, newName: renamingFile }),
+    });
+    setRenamingFile(oldName);
+    const data = await response.text();
+    console.log(data);
+    loadData(path.join("/"));
+  }
+
   return (
     <div className="flex h-screen bg-[#F8F9FB] text-slate-900 font-sans antialiased relative">
       {previewFile && (
@@ -110,26 +125,14 @@ export default function App() {
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-50">
           <div className="flex items-center gap-4">
             <div className="bg-indigo-600 p-1.5 rounded-lg text-white shadow-md shadow-indigo-100">
-              <HardDrive size={18} />
+              <img src={HardDrive} className="w-5" alt="" />
             </div>
-            <span className="font-bold text-lg tracking-tight">NexusDrive</span>
+            <span className="hidden sm:block font-bold text-lg tracking-tight">
+              NexusDrive
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-              <button
-                onClick={() => setView("grid")}
-                className={`p-1.5 rounded-md transition-all ${view === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                onClick={() => setView("list")}
-                className={`p-1.5 rounded-md transition-all ${view === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
-              >
-                <ListIcon size={16} />
-              </button>
-            </div>
             <button
               onClick={() => fileInputRef.current.click()}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
@@ -147,7 +150,7 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-8">
-          <div className="flex items-center text-sm font-medium mb-8 bg-white w-fit px-4 py-2 rounded-xl border border-slate-200">
+          <div className="flex items-center justify-between text-sm font-medium mb-8 w-full px-4 py-2 ">
             <button
               onClick={() => {
                 setPath([]);
@@ -157,18 +160,20 @@ export default function App() {
             >
               Home
             </button>
-            {path.map((p, i) => (
-              <div key={i} className="flex items-center">
-                <ChevronRight size={14} className="mx-1 text-slate-300" />
-                <span
-                  className={
-                    i === path.length - 1 ? "text-slate-900" : "text-slate-500"
-                  }
-                >
-                  {p}
-                </span>
-              </div>
-            ))}
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setView("grid")}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "grid" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setView("list")}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${view === "list" ? "bg-white shadow-sm text-indigo-600" : "text-slate-400"}`}
+              >
+                <ListIcon size={16} />
+              </button>
+            </div>
           </div>
 
           {uploadProgress !== null && (
@@ -204,6 +209,9 @@ export default function App() {
                   item={item}
                   view={view}
                   handleDelete={handleDelete}
+                  handleRename={handleRename}
+                  renamingFile={renamingFile}
+                  setRenamingFile={setRenamingFile}
                   onOpen={() =>
                     isFolder(item.name)
                       ? loadFolder(item.name)
