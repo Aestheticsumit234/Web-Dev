@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import FileItem from "./components/FileItem";
 import HardDrive from "../public/nexusD.png";
+const Url = `http://localhost:3000`;
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -23,7 +24,7 @@ export default function App() {
 
   async function loadData(folder = "") {
     try {
-      const response = await fetch(`http://localhost:3000/${folder}`);
+      const response = await fetch(`${Url}/${folder}`);
       const data = await response.json();
       setItems(data);
     } catch (error) {
@@ -41,7 +42,7 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
     const XHR = new XMLHttpRequest();
-    XHR.open("POST", `http://localhost:3000/${currentPath}`, true);
+    XHR.open("POST", `${Url}/${currentPath}`, true);
     XHR.setRequestHeader("filename", file.name);
     XHR.upload.addEventListener("progress", (e) => {
       setUploadProgress(Math.round((e.loaded / e.total) * 100));
@@ -55,7 +56,7 @@ export default function App() {
 
   const handleDelete = async (fileName) => {
     const fullPath = currentPath ? `${currentPath}/${fileName}` : fileName;
-    const response = await fetch("http://localhost:3000/", {
+    const response = await fetch(`${Url}/`, {
       method: "DELETE",
       body: JSON.stringify({ filePath: fullPath }),
       headers: { "Content-Type": "application/json" },
@@ -72,7 +73,7 @@ export default function App() {
       : renamingFileName;
 
     try {
-      const response = await fetch(`http://localhost:3000/`, {
+      const response = await fetch(`${Url}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ oldName: oldFullPath, newName: newFullPath }),
@@ -104,7 +105,7 @@ export default function App() {
               </button>
             </div>
             <iframe
-              src={`http://localhost:3000/${currentPath}/${previewFile}?action=open`}
+              src={`${Url}/${currentPath}/${previewFile}?action=open`}
               className="flex-1 w-full border-none"
             />
           </div>
