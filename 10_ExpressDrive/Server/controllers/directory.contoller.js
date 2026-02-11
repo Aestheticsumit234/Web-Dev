@@ -1,20 +1,8 @@
 import { mkdir, readdir, stat } from "fs/promises";
 import path from "path";
+import { safePath } from "../utils/safePath.js";
 
 const BASE_PUBLIC = path.resolve("./public");
-function safePath(base, userPath = "") {
-  const resolved = path.resolve(base, userPath);
-
-  if (!resolved.startsWith(base)) {
-    throw new Error("Path Traversal Attempt Blocked");
-  }
-
-  if (userPath.includes("..")) {
-    throw new Error("Invalid Path");
-  }
-
-  return resolved;
-}
 
 export const readDirectory = async (req, res) => {
   try {
