@@ -8,11 +8,10 @@ const BASE_TRASH = path.resolve("./trash");
 
 export const uploadFiles = async (req, res) => {
   try {
-    const { 0: filename } = req.params;
+    const filename = req.params[0];
+    console.log(filename);
     const uploadPath = safePath(BASE_PUBLIC, filename);
-
     const writeStream = createWriteStream(uploadPath);
-
     req.pipe(writeStream);
 
     writeStream.on("finish", () => {

@@ -8,9 +8,9 @@ import {
 
 const router = express.Router();
 
+router.post("/:filename(*)", uploadFiles);
+router.patch("/*", renameFiles);
 router.get("/:filePath(*)", downloadFiles);
 router.delete("/:filePath(*)", deleteFiles);
-router.patch("/*", renameFiles);
-router.post("/*", uploadFiles);
 
 export default router;
