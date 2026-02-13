@@ -1,16 +1,16 @@
 import express from "express";
 import {
   deleteFiles,
-  downloadFiles,
+  getFile,
   renameFiles,
   uploadFiles,
 } from "../controllers/files.controller.js";
 
 const router = express.Router();
 
-router.post("/:filename(*)", uploadFiles);
-router.patch("/*", renameFiles);
-router.get("/:filePath(*)", downloadFiles);
-router.delete("/:filePath(*)", deleteFiles);
+router.post("/:filename", uploadFiles);
+router.get("/:id", getFile);
+router.patch("/:id", renameFiles);
+router.delete("/:id", deleteFiles);
 
 export default router;

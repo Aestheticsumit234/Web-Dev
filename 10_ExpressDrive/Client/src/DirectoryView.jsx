@@ -139,6 +139,7 @@ function DirectoryView() {
     const uploadPath = cleanDirPath
       ? `${cleanDirPath}/${cleanName}`
       : cleanName;
+    console.log(uploadPath);
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${URL}files/${uploadPath}`, true);
@@ -249,7 +250,6 @@ function DirectoryView() {
   return (
     <>
       <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
-        {/* Sidebar & Header - same as before */}
         <div
           className={`fixed inset-0 bg-slate-900/50 z-40 transition-opacity lg:hidden ${
             isSidebarOpen ? "opacity-100 visible" : "opacity-0 invisible"
@@ -321,7 +321,7 @@ function DirectoryView() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="h-9 w-9 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg">
+            <div className="h-9 w-9 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-lg">
               JD
             </div>
           </header>
@@ -330,7 +330,7 @@ function DirectoryView() {
             <div className="max-w-7xl mx-auto">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
                 <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  <h1 className="text-3xl font-bold bg-linear-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     {view === "files" ? "My Files" : "Trash"}
                   </h1>
                   <p className="text-slate-500 mt-1">
@@ -339,8 +339,8 @@ function DirectoryView() {
                 </div>
 
                 {view === "files" && (
-                  <div className="flex gap-3 flex-wrap">
-                    <label className="group bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-2xl cursor-pointer flex items-center gap-2 text-sm font-bold shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-[1.02]">
+                  <div className="flex gap-3 flex-wrap justify-between">
+                    <label className="group bg-linear-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-2xl cursor-pointer flex items-center gap-2 text-sm font-bold shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-[1.02]">
                       <UploadCloud size={20} />
                       Upload
                       <input
@@ -364,17 +364,17 @@ function DirectoryView() {
               {progress > 0 && progress < 100 && (
                 <div className="mb-6 bg-slate-200 h-2 rounded-2xl overflow-hidden shadow-inner">
                   <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-2xl shadow-lg transition-all duration-300"
+                    className="h-full bg-linear-to-r from-indigo-500 to-indigo-600 rounded-2xl shadow-lg transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
               )}
 
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200/50 shadow-2xl overflow-hidden">
+              <div className="bg-white/80 backdrop-blur-xl rounded border border-slate-200/50 shadow-2xl overflow-hidden">
                 {view === "files" ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200/50">
+                      <thead className="bg-linear-to-r from-slate-50 to-slate-100 border-b border-slate-200/50">
                         <tr className="">
                           <th className="px-8 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
                             Name
@@ -414,8 +414,8 @@ function DirectoryView() {
                                   <div
                                     className={`p-3 rounded-2xl shadow-sm transition-all group-hover:scale-105 ${
                                       isDirectory
-                                        ? "bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-700 border-2 border-indigo-200/50"
-                                        : "bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 border-2 border-blue-200/50"
+                                        ? "bg-linear-to-br from-indigo-100 to-indigo-200 text-indigo-700 border-2 border-indigo-200/50"
+                                        : "bg-linear-to-br from-blue-100 to-blue-200 text-blue-700 border-2 border-blue-200/50"
                                     }`}
                                   >
                                     {isDirectory ? (
@@ -464,7 +464,7 @@ function DirectoryView() {
                                   ) : (
                                     <div className="flex items-center gap-3 flex-1">
                                       <span
-                                        className="font-semibold text-slate-800 truncate cursor-pointer hover:text-indigo-600 max-w-[300px] py-1 px-2 rounded-lg group-hover:bg-indigo-50 transition-all"
+                                        className="font-semibold text-slate-800 truncate cursor-pointer hover:text-indigo-600 max-w-75 py-1 px-2 rounded-lg group-hover:bg-indigo-50 transition-all"
                                         onClick={() => startEdit(item)}
                                         title={`Rename ${item}`}
                                       >
@@ -488,7 +488,7 @@ function DirectoryView() {
                                   {isDirectory ? (
                                     <Link
                                       to={`./${item}`}
-                                      className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+                                      className="px-4 py-2.5 bg-linear-to-r from-indigo-600 to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
                                       title="Open folder"
                                     >
                                       Open
@@ -528,11 +528,10 @@ function DirectoryView() {
           </div>
         </main>
 
-        {/* CREATE FOLDER MODAL */}
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-100 flex items-center justify-center p-6">
             <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 w-full max-w-md shadow-2xl border border-slate-200/50 animate-in zoom-in-95 duration-300">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-6">
+              <h2 className="text-2xl font-bold bg-linear-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-6">
                 New Folder
               </h2>
               <input
@@ -551,7 +550,7 @@ function DirectoryView() {
                 </button>
                 <button
                   onClick={handleCreateFolder}
-                  className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-8 py-3 rounded-2xl font-bold shadow-xl hover:shadow-2xl hover:scale-105 transition-all"
+                  className="bg-linear-to-r from-indigo-600 to-indigo-700 text-white px-8 py-3 rounded-2xl font-bold shadow-xl hover:shadow-2xl hover:scale-105 transition-all"
                 >
                   Create Folder
                 </button>
@@ -561,7 +560,6 @@ function DirectoryView() {
         )}
       </div>
 
-      {/* ✅ PROFESSIONAL FULL-SCREEN PREVIEW OVERLAY */}
       {previewFile && (
         <div
           ref={previewRef}
@@ -569,10 +567,9 @@ function DirectoryView() {
           onClick={(e) => e.target === e.currentTarget && closePreview()}
         >
           <div className="w-full h-full flex flex-col bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-200/30 overflow-hidden animate-in slide-in-from-right duration-500">
-            {/* Preview Header */}
             <div className="px-2 py-1 border-b border-slate-200/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className=" bg-gradient-to-br from-indigo-100 to-indigo-200 p-2 rounded-2xl">
+                <div className=" bg-linear-to-br from-indigo-100 to-indigo-200 p-2 rounded-2xl">
                   <File size={24} className="text-indigo-600" />
                 </div>
                 <div>
@@ -620,7 +617,7 @@ function DirectoryView() {
                 </div>
               ) : previewUrl ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="w-full h-96 lg:h-[658px] flex items-center justify-center bg-slate-800 rounded-xl border-2 border-dashed border-slate-200/50">
+                  <div className="w-full h-96 lg:h-full flex items-center justify-center bg-slate-800 rounded-xl border-2 border-dashed border-slate-200/50">
                     {getFileType(previewFile) === "image" ? (
                       <img
                         src={previewUrl}
@@ -637,7 +634,7 @@ function DirectoryView() {
                       </video>
                     ) : (
                       <div className="flex flex-col items-center gap-4 p-12 text-center">
-                        <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center">
+                        <div className="w-24 h-24 bg-linear-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center">
                           <File size={32} className="text-slate-400" />
                         </div>
                         <div>
