@@ -1,4 +1,4 @@
-import { mkdir, readdir, stat, writeFile } from "fs/promises";
+import { rm, writeFile } from "fs/promises";
 import path from "path";
 import { safePath } from "../utils/safePath.js";
 import DirectoriesDB from "../DirectoriesDB.json" with { type: "json" };
@@ -58,5 +58,89 @@ export const createDirectory = async (req, res) => {
     res.json({ message: "Directory created successfully" });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+};
+
+export const renameDirectory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newFilename } = req.body;
+    const dirData = DirectoriesDB.find((dir) => dir.id === id);
+    if (!dirData) {
+      return res.status(404).json({ error: "Directory not found" });
+    }
+    dirData.name = newFilename;
+    await writeFile("./DirectoriesDB.json", JSON.stringify(DirectoriesDB));
+
+    res.json({ message: "Directory renamed successfully" });
+  } catch (error) {
+    console.error("Rename Directory Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const deleteDirectory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const recursiveDelete = async (dirId) => {
+      const dirIndex = DirectoriesDB.findIndex((d) => d.id === dirId);
+      if (dirIndex === -1) return;
+
+      const dirData = DirectoriesDB[dirIndex];
+
+      if (dirData.files) {
+        for (const fileId of dirData.files) {
+          const fIndex = filesDataJSON.findIndex((f) => f.id === fileId);
+          if (fIndex !== -1) {
+            const file = filesDataJSON[fIndex];
+            const physicalPath = safePath(
+              BASE_PUBLIC,
+              `${file.id}${file.extension}`,
+            );
+
+            try {
+              await rm(physicalPath, { force: true });
+            } catch (err) {
+              console.error(`Failed to delete physical file: ${physicalPath}`);
+            }
+
+            filesDataJSON.splice(fIndex, 1);
+          }
+        }
+      }
+
+      if (dirData.directories) {
+        for (const subDirId of [...dirData.directories]) {
+          await recursiveDelete(subDirId);
+        }
+      }
+
+      DirectoriesDB.splice(dirIndex, 1);
+    };
+
+    const targetDir = DirectoriesDB.find((d) => d.id === id);
+    if (!targetDir) {
+      return res.status(404).json({ error: "Directory not found" });
+    }
+
+    const parentId = targetDir.parentDirId;
+
+    await recursiveDelete(id);
+
+    const parentDir = DirectoriesDB.find((d) => d.id === parentId);
+    if (parentDir && parentDir.directories) {
+      parentDir.directories = parentDir.directories.filter((dId) => dId !== id);
+    }
+
+    await Promise.all([
+      writeFile("./filesDB.json", JSON.stringify(filesDataJSON, null, 2)),
+      writeFile("./DirectoriesDB.json", JSON.stringify(DirectoriesDB, null, 2)),
+    ]);
+
+    res.json({ message: "Directory and all contents deleted successfully" });
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
