@@ -8,7 +8,7 @@ import {
 
 const router = express.Router();
 
-router.post("/:filename", uploadFiles);
+router.post("/:parentDirId", uploadFiles);
 router.get("/:id", getFile);
 router.patch("/:id", renameFiles);
 router.delete("/:id", deleteFiles);

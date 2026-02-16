@@ -6,8 +6,8 @@ import {
 
 const router = express.Router();
 
-router.get("/?*", readDirectory);
+router.get("/:id?", readDirectory);
 
-router.post("/?*", createDirectory);
+router.post("/:parentdirId?", createDirectory);
 
 export default router;

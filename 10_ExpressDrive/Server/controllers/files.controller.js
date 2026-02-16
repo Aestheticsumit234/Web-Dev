@@ -1,38 +1,88 @@
 import { createWriteStream } from "fs";
-import { cp, mkdir, readFile, rename, rm, stat, writeFile } from "fs/promises";
+import fs from "fs/promises";
+import { rm, writeFile } from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 import { safePath } from "../utils/safePath.js";
 import FileJsonData from "../filesDB.json" with { type: "json" };
-import TrashJsonData from "../trashDB.json" with { type: "json" };
+import DirectoriesDB from "../DirectoriesDB.json" with { type: "json" };
 
 const BASE_PUBLIC = path.resolve("./public");
-const BASE_TRASH = path.resolve("./trash");
 
 export const uploadFiles = async (req, res) => {
   try {
-    const { filename } = req.params;
+    const parentDirId =
+      req.params.parentDirId || (DirectoriesDB[0] ? DirectoriesDB[0].id : null);
+    const filename = req.headers.filename || "untitled";
     const extension = path.extname(filename);
     const Id = crypto.randomUUID();
     const uploadPath = safePath(BASE_PUBLIC, `${Id}${extension}`);
     const writeStream = createWriteStream(uploadPath);
-    req.pipe(writeStream);
-    writeStream.on("finish", async () => {
-      FileJsonData.push({
-        id: Id,
-        extension: extension,
-        filename: filename,
-      });
-      await writeFile("./filesDB.json", JSON.stringify(FileJsonData));
-      res.status(200).json({ message: "File uploaded successfully" });
+
+    req.on("error", (err) => {
+      if (!res.headersSent) {
+        writeStream.destroy();
+        res.status(500).json({ error: "Request stream error" });
+      }
     });
 
-    writeStream.on("error", () => {
-      res.status(500).json({ error: "File upload failed" });
+    writeStream.on("error", (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Write stream error" });
+      }
+    });
+
+    req.pipe(writeStream);
+
+    writeStream.on("finish", async () => {
+      try {
+        const newFile = {
+          id: Id,
+          extension: extension,
+          filename: filename,
+          parentDirId,
+        };
+
+        FileJsonData.push(newFile);
+
+        const parentDirData = DirectoriesDB.find(
+          (folder) => folder.id === parentDirId,
+        );
+
+        if (parentDirData) {
+          if (!Array.isArray(parentDirData.files)) {
+            parentDirData.files = [];
+          }
+          parentDirData.files.push(Id);
+        }
+
+        await Promise.all([
+          fs.writeFile(
+            "./DirectoriesDB.json",
+            JSON.stringify(DirectoriesDB, null, 2),
+          ),
+          fs.writeFile("./filesDB.json", JSON.stringify(FileJsonData, null, 2)),
+        ]);
+
+        if (!res.headersSent) {
+          res
+            .status(200)
+            .json({ message: "File uploaded successfully", id: Id });
+        }
+      } catch (innerError) {
+        console.error("Post-upload processing error:", innerError);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to update database records" });
+        }
+      }
     });
   } catch (error) {
-    res.status(400).json({ error: "Invalid upload path" });
+    console.error("General upload error:", error);
+    if (!res.headersSent) {
+      res.status(400).json({ error: "Invalid upload request" });
+    }
   }
-}; //✅
+};
 
 export const renameFiles = async (req, res) => {
   try {
@@ -51,30 +101,35 @@ export const renameFiles = async (req, res) => {
 export const deleteFiles = async (req, res) => {
   try {
     const { id } = req.params;
-    const fileDBRaw = await readFile("./filesDB.json", "utf-8");
-    const trashDBRaw = await readFile("./trashDB.json", "utf-8");
-    const FileJsonData = JSON.parse(fileDBRaw);
-    const TrashJsonData = JSON.parse(trashDBRaw);
     const fileIndex = FileJsonData.findIndex((file) => file.id === id);
+
     if (fileIndex === -1) {
-      return res.status(404).json({ error: "File not found in DB" });
+      return res.status(404).json({ error: "File not found in database" });
     }
+
     const fileData = FileJsonData[fileIndex];
+    const fileName = `${fileData.id}${fileData.extension}`;
+    const filePath = safePath(BASE_PUBLIC, fileName);
 
-    const source = safePath(BASE_PUBLIC, `${id}${fileData.extension}`);
-    const destination = safePath(BASE_TRASH, `${id}${fileData.extension}`);
-
-    await mkdir(BASE_TRASH, { recursive: true });
-    await cp(source, destination, { recursive: true });
-    await rm(source, { recursive: true, force: true });
-
-    TrashJsonData.push(fileData);
+    await rm(filePath, { force: true });
     FileJsonData.splice(fileIndex, 1);
+    const parentDirData = DirectoriesDB.find(
+      (dir) => dir.id === fileData.parentDirId,
+    );
+
+    if (parentDirData) {
+      parentDirData.files = parentDirData.files.filter(
+        (fileId) => fileId !== id,
+      );
+    }
 
     await writeFile("./filesDB.json", JSON.stringify(FileJsonData, null, 2));
-    await writeFile("./trashDB.json", JSON.stringify(TrashJsonData, null, 2));
+    await writeFile(
+      "./DirectoriesDB.json",
+      JSON.stringify(DirectoriesDB, null, 2),
+    );
 
-    res.json({ message: "File moved to trash successfully" });
+    res.status(200).json({ message: "File deleted successfully" });
   } catch (err) {
     console.error("DELETE ERROR:", err);
     res.status(500).json({ error: "Delete failed" });
@@ -89,11 +144,15 @@ export const getFile = async (req, res) => {
     const safe = safePath(BASE_PUBLIC, filePath);
 
     if (req.query.action === "download") {
-      res.set("Content-Disposition", "attachment");
+      res.set(
+        "Content-Disposition",
+        `attachment; filename=${fileData.filename}`,
+      );
     }
 
     res.sendFile(safe);
   } catch (err) {
+    console.log(err);
     res.status(400).json({ error: "Invalid file path" });
   }
 }; //✅

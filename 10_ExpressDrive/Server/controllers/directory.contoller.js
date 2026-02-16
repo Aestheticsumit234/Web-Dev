@@ -1,41 +1,62 @@
-import { mkdir, readdir, stat } from "fs/promises";
+import { mkdir, readdir, stat, writeFile } from "fs/promises";
 import path from "path";
 import { safePath } from "../utils/safePath.js";
+import DirectoriesDB from "../DirectoriesDB.json" with { type: "json" };
+import filesDataJSON from "../filesDB.json" with { type: "json" };
 
 const BASE_PUBLIC = path.resolve("./public");
 
 export const readDirectory = async (req, res) => {
   try {
-    const { 0: dirname = "" } = req.params;
+    const { id } = req.params;
+    const currentDirectory = !id
+      ? DirectoriesDB[0]
+      : DirectoriesDB.find((folder) => folder.id === id);
 
-    const fullDirPath = safePath(BASE_PUBLIC, dirname);
-
-    const fileList = await readdir(fullDirPath);
-
-    const resData = [];
-    for (const file of fileList) {
-      const filePath = path.join(fullDirPath, file);
-      const stats = await stat(filePath);
-
-      resData.push({ item: file, isDirectory: stats.isDirectory() });
+    if (!currentDirectory) {
+      return res
+        .status(404)
+        .json({ error: "Directory not found", file: [], directories: [] });
     }
-    res.json(resData);
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({ error: "Invalid directory path" });
+    const file = (currentDirectory.files || [])
+      .map((fileId) => filesDataJSON.find((f) => f.id === fileId))
+      .filter(Boolean);
+
+    const directories = (currentDirectory.directories || [])
+      .map((dirId) => DirectoriesDB.find((d) => d.id === dirId))
+      .filter(Boolean);
+
+    res.json({
+      ...currentDirectory,
+      file,
+      directories,
+    });
+  } catch (error) {
+    console.error("Read Directory Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 export const createDirectory = async (req, res) => {
   try {
-    const { 0: dirname = "" } = req.params;
+    const { dirname } = req.headers;
+    const parentDirId = req.params.parentdirId || DirectoriesDB[0].id;
+    const id = crypto.randomUUID();
 
     const fullPath = safePath(BASE_PUBLIC, dirname);
 
-    await mkdir(fullPath, { recursive: true });
+    const parentDir = DirectoriesDB.find((folder) => folder.id === parentDirId);
+    parentDir.directories.push(id);
 
-    res.json({ message: "Folder created successfully" });
+    DirectoriesDB.push({
+      id: id,
+      name: dirname,
+      parentDirId,
+      directories: [],
+    });
+    await writeFile("./DirectoriesDB.json", JSON.stringify(DirectoriesDB));
+    res.json({ message: "Directory created successfully" });
   } catch (err) {
-    res.status(400).json({ error: "Invalid folder path" });
+    res.status(400).json({ error: err.message });
   }
 };
