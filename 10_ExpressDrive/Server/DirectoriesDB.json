@@ -1,7 +1,8 @@
 [
   {
     "id": "7b8ed6fc-1d08-4802-b581-8c164f8da354",
-    "name": "root",
+    "name": "root_UserEmail",
+    "userId": "random_user_Id",
     "parentDir": null,
     "files": [],
     "directories": []

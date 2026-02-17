@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  File,
-  Download,
-  ExternalLink,
-  Edit2,
-  Trash2,
-  Save,
-} from "lucide-react";
-
+import { File, Download, Save, LogOut } from "lucide-react";
+import { useAuth } from "./contexts/AuthContext";
 function DirectoryView() {
   const BASE_URL = "http://localhost:8080";
   const [directoriesList, setDirectoriesList] = useState([]);
@@ -17,6 +10,7 @@ function DirectoryView() {
   const [newFilename, setNewFilename] = useState("");
   const [newDirname, setNewDirname] = useState("");
   const { dirId } = useParams();
+  const { logout, isAuthenticated } = useAuth();
 
   async function getDirectoryItems() {
     try {
@@ -115,9 +109,30 @@ function DirectoryView() {
     getDirectoryItems();
   }
 
+  // handle logout ======>
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:8080/auth/logout", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.log("Logout API error:", error);
+    }
+    logout();
+  };
+
   return (
     <div className="ml-3">
       <h1>My Files</h1>
+      {isAuthenticated && (
+        <button
+          onClick={handleLogout}
+          className="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2 z-50 shadow-lg"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
+      )}
       <input type="file" onChange={uploadFile} />
       <input
         className="border"
@@ -137,7 +152,6 @@ function DirectoryView() {
         <button>Create Folder</button>
       </form>
 
-      {/* ERROR FIX: ?. use kiya taaki undefined par map crash na ho */}
       {directoriesList?.map(({ name, id }) => (
         <div key={id}>
           {name}{" "}
