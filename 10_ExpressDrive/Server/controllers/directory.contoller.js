@@ -22,9 +22,21 @@ export const readDirectory = async (req, res) => {
       .map((fileId) => filesDataJSON.find((f) => f.id === fileId))
       .filter(Boolean);
 
+    if (!file) {
+      return res
+        .status(404)
+        .json({ error: "File not found", file: [], directories: [] });
+    }
+
     const directories = (currentDirectory.directories || [])
       .map((dirId) => DirectoriesDB.find((d) => d.id === dirId))
       .filter(Boolean);
+
+    if (!directories) {
+      return res
+        .status(404)
+        .json({ error: "Directory not found", file: [], directories: [] });
+    }
 
     res.json({
       ...currentDirectory,
@@ -33,7 +45,7 @@ export const readDirectory = async (req, res) => {
     });
   } catch (error) {
     console.error("Read Directory Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -41,11 +53,20 @@ export const createDirectory = async (req, res) => {
   try {
     const { dirname } = req.headers;
     const parentDirId = req.params.parentdirId || DirectoriesDB[0].id;
+    if (!parentDirId) {
+      return res.status(400).json({ error: "Parent directory not found" });
+    }
+
     const id = crypto.randomUUID();
 
     const fullPath = safePath(BASE_PUBLIC, dirname);
 
     const parentDir = DirectoriesDB.find((folder) => folder.id === parentDirId);
+
+    if (!parentDir) {
+      return res.status(404).json({ error: "Parent directory not found" });
+    }
+
     parentDir.directories.push(id);
 
     DirectoriesDB.push({
@@ -65,7 +86,11 @@ export const renameDirectory = async (req, res) => {
   try {
     const { id } = req.params;
     const { newFilename } = req.body;
+    if (!id || !newFilename) {
+      return res.status(400).json({ error: "Directory not found" });
+    }
     const dirData = DirectoriesDB.find((dir) => dir.id === id);
+
     if (!dirData) {
       return res.status(404).json({ error: "Directory not found" });
     }
@@ -83,10 +108,15 @@ export const deleteDirectory = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ error: "Directory not found" });
+    }
+
     const recursiveDelete = async (dirId) => {
       const dirIndex = DirectoriesDB.findIndex((d) => d.id === dirId);
-      if (dirIndex === -1) return;
-
+      if (dirIndex === -1) {
+        return res.status(404).json({ error: "Directory not found" });
+      }
       const dirData = DirectoriesDB[dirIndex];
 
       if (dirData.files) {

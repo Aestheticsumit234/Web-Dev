@@ -13,6 +13,11 @@ export const uploadFiles = async (req, res) => {
   try {
     const parentDirId =
       req.params.parentDirId || (DirectoriesDB[0] ? DirectoriesDB[0].id : null);
+
+    if (!parentDirId) {
+      return res.status(404).json({ error: "Parent directory not found" });
+    }
+
     const filename = req.headers.filename || "untitled";
     const extension = path.extname(filename);
     const Id = crypto.randomUUID();
@@ -28,7 +33,7 @@ export const uploadFiles = async (req, res) => {
 
     writeStream.on("error", (err) => {
       if (!res.headersSent) {
-        res.status(500).json({ error: "Write stream error" });
+        return res.status(500).json({ error: "Write stream error" });
       }
     });
 
@@ -88,6 +93,11 @@ export const renameFiles = async (req, res) => {
   try {
     const { id } = req.params;
     const filePath = FileJsonData.find((file) => file.id === id);
+
+    if (!filePath) {
+      return res.status(404).json({ error: "File not found in database" });
+    }
+
     const { newFilename } = req.body;
     filePath.filename = newFilename;
     await writeFile("./filesDB.json", JSON.stringify(FileJsonData));
@@ -138,6 +148,9 @@ export const deleteFiles = async (req, res) => {
 export const getFile = async (req, res) => {
   const { id } = req.params;
   const fileData = FileJsonData.find((file) => file.id === id);
+  if (!fileData) {
+    return res.status(404).json({ error: "File not found in database" });
+  }
   const { extension } = fileData;
   const filePath = `${id}${extension}`;
   try {
@@ -153,6 +166,6 @@ export const getFile = async (req, res) => {
     res.sendFile(safe);
   } catch (err) {
     console.log(err);
-    res.status(400).json({ error: "Invalid file path" });
+    return res.status(400).json({ error: "Invalid file path" });
   }
 }; //✅

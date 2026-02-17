@@ -22,8 +22,6 @@ function DirectoryView() {
     try {
       const response = await fetch(`${BASE_URL}/directory/${dirId || ""}`);
       const data = await response.json();
-
-      // ERROR FIX: Agar data undefined ho toh crash na ho, isliye fallback || [] lagaya hai
       setDirectoriesList(data?.directories || []);
       setFilesList(data?.file || []);
     } catch (error) {
@@ -41,7 +39,7 @@ function DirectoryView() {
     const file = e.target.files[0];
     if (!file) return;
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${BASE_URL}/files/${dirId}`, true);
+    xhr.open("POST", `${BASE_URL}/files/${dirId || ""}`, true);
     xhr.setRequestHeader("filename", file.name);
     xhr.addEventListener("load", () => {
       console.log(xhr.response);
@@ -62,6 +60,14 @@ function DirectoryView() {
     console.log(data);
     getDirectoryItems();
   }
+  async function handleDeleteDirectory(dirId) {
+    const response = await fetch(`${BASE_URL}/directory/${dirId}`, {
+      method: "DELETE",
+    });
+    const data = await response.text();
+    console.log(data);
+    getDirectoryItems();
+  }
 
   async function renameFile(oldFilename) {
     setNewFilename(oldFilename);
@@ -69,6 +75,21 @@ function DirectoryView() {
 
   async function saveFilename(fileId) {
     const response = await fetch(`${BASE_URL}/files/${fileId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ newFilename }),
+    });
+    await response.text();
+    setNewFilename("");
+    getDirectoryItems();
+  }
+
+  // Directory ====>
+  async function saveDierectoryName(dirId) {
+    console.log(dirId);
+    const response = await fetch(`${BASE_URL}/directory/${dirId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -131,13 +152,13 @@ function DirectoryView() {
           </button>
           <button
             className="border px-3 py-1 ml-2"
-            onClick={() => saveFilename(id)}
+            onClick={() => saveDierectoryName(id)}
           >
             Save
           </button>
           <button
             className="border px-3 py-1 ml-2"
-            onClick={() => handleDelete(id)}
+            onClick={() => handleDeleteDirectory(id)}
           >
             Delete
           </button>
