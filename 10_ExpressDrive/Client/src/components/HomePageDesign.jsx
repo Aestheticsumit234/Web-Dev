@@ -11,7 +11,9 @@ import {
   Plus,
   UploadCloud,
   Loader2,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "./contexts/AuthContext";
 
 function DirectoryView() {
   const BASE_URL = "http://localhost:8080";
@@ -22,15 +24,15 @@ function DirectoryView() {
   const [isLoading, setIsLoading] = useState(true);
   const [newFilename, setNewFilename] = useState("");
   const [newDirname, setNewDirname] = useState("");
-  const [editingId, setEditingId] = useState(null); // Track kounsa file rename ho raha hai
+  const [editingId, setEditingId] = useState(null);
   const { dirId } = useParams();
+  const { logout, isAuthenticated } = useAuth();
 
   async function getDirectoryItems() {
     setIsLoading(true);
     try {
       const response = await fetch(`${BASE_URL}/directory/${dirId || ""}`);
       const data = await response.json();
-      // Thoda delay feel dene ke liye (Drive experience)
       setTimeout(() => {
         setDirectoriesList(data?.directories || []);
         setFilesList(data?.file || []);
@@ -67,7 +69,6 @@ function DirectoryView() {
     xhr.send(file);
   }
 
-  // --- Baaki Logic Same Rakha Hai (Bina Change Kiye) ---
   async function handleDelete(fileId) {
     await fetch(`${BASE_URL}/files/${fileId}`, { method: "DELETE" });
     getDirectoryItems();
@@ -117,15 +118,25 @@ function DirectoryView() {
     getDirectoryItems();
   }
 
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:8080/auth/logout", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.log("Logout API error:", error);
+    }
+    logout();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-800">
-      {/* Header Section */}
       <header className="mb-6 flex items-center justify-between bg-white p-4 shadow-sm rounded-lg">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Folder className="text-blue-500" /> Cloud Drive
         </h1>
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           <form onSubmit={handleCreateDirectory} className="flex gap-1">
             <input
               type="text"
@@ -144,19 +155,26 @@ function DirectoryView() {
             Upload
             <input type="file" className="hidden" onChange={uploadFile} />
           </label>
+
+          {isAuthenticated && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 transition text-sm font-medium shadow-sm"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Main Content Area */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {/* Table Head */}
         <div className="grid grid-cols-12 gap-4 border-b bg-gray-100 px-6 py-3 text-xs font-semibold uppercase text-gray-500">
           <div className="col-span-6">Name</div>
           <div className="col-span-6 text-right">Actions</div>
         </div>
 
         {isLoading ? (
-          // Skeleton Loader
           <div className="p-6 space-y-4">
             {[1, 2, 3, 4].map((i) => (
               <div
@@ -167,7 +185,6 @@ function DirectoryView() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {/* Directories Section */}
             {directoriesList.map(({ name, id }) => (
               <div
                 key={id}
@@ -217,7 +234,6 @@ function DirectoryView() {
               </div>
             ))}
 
-            {/* Files Section */}
             {filesList.map(({ filename, id }) => (
               <div
                 key={id}
@@ -287,7 +303,6 @@ function DirectoryView() {
         )}
       </div>
 
-      {/* Uploading Progress Toast */}
       {isUploading && (
         <div className="fixed bottom-4 right-4 bg-white shadow-2xl rounded-lg border p-4 w-72 animate-in slide-in-from-bottom-5">
           <div className="flex items-center justify-between mb-2">

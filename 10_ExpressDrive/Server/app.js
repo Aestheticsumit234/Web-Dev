@@ -19,7 +19,7 @@ app.use(
   }),
 );
 
-app.use("/auth", authRoutes);
+app.use("/users", authRoutes);
 app.use("/directory", directoryRouter);
 app.use("/files", filesRoutes);
 app.use("/trash", trashRoutes);

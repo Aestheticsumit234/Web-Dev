@@ -1,9 +1,12 @@
 import { writeFile } from "fs/promises";
 import UserData from "../UserDB.json" with { type: "json" };
+import DirectoriesData from "../DirectoriesDB.json" with { type: "json" };
 
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+    const userId = crypto.randomUUID();
+    const dirId = crypto.randomUUID();
 
     console.log(`
         Username: ${username}
@@ -22,15 +25,28 @@ export const register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
+
+    // directory creation
+    DirectoriesData.push({
+      id: dirId,
+      name: `root-${email}`,
+      userId,
+      parentDirId: null,
+      files: [],
+      directories: [],
+    });
+
+    // userData creation
     const newUser = {
-      id: crypto.randomUUID(),
+      id: userId,
       username,
       email,
       password,
-      rootDirId: crypto.randomUUID(),
+      rootDirId: dirId,
     };
 
     UserData.push(newUser);
+    await writeFile("./DirectoriesDB.json", JSON.stringify(DirectoriesData));
     await writeFile("./UserDB.json", JSON.stringify(UserData));
     res.status(200).json({ message: "Registration successful", user: newUser });
   } catch (error) {
