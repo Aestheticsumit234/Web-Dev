@@ -11,11 +11,25 @@ const BASE_PUBLIC = path.resolve("./public");
 
 export const uploadFiles = async (req, res) => {
   try {
-    const parentDirId =
-      req.params.parentDirId || (DirectoriesDB[0] ? DirectoriesDB[0].id : null);
+    const userId = req.userId;
+
+    const userRoot = DirectoriesDB.find(
+      (id) => id.userId === userId && id.parentDirId === null,
+    );
+    const parentDirId = req.params.parentDirId || userRoot?.id;
 
     if (!parentDirId) {
       return res.status(404).json({ error: "Parent directory not found" });
+    }
+
+    const parentDirData = DirectoriesDB.find(
+      (folder) => folder.id === parentDirId && folder.userId === userId,
+    );
+
+    if (!parentDirData) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized access to this directory" });
     }
 
     const filename = req.headers.filename || "untitled";
@@ -46,20 +60,15 @@ export const uploadFiles = async (req, res) => {
           extension: extension,
           filename: filename,
           parentDirId,
+          userId: userId,
         };
 
         FileJsonData.push(newFile);
 
-        const parentDirData = DirectoriesDB.find(
-          (folder) => folder.id === parentDirId,
-        );
-
-        if (parentDirData) {
-          if (!Array.isArray(parentDirData.files)) {
-            parentDirData.files = [];
-          }
-          parentDirData.files.push(Id);
+        if (!Array.isArray(parentDirData.files)) {
+          parentDirData.files = [];
         }
+        parentDirData.files.push(Id);
 
         await Promise.all([
           fs.writeFile(
@@ -91,43 +100,70 @@ export const uploadFiles = async (req, res) => {
 
 export const renameFiles = async (req, res) => {
   try {
+    const userId = req.userId;
     const { id } = req.params;
-    const filePath = FileJsonData.find((file) => file.id === id);
+
+    const filePath = FileJsonData.find(
+      (file) => file.id === id && file.userId === userId,
+    );
 
     if (!filePath) {
-      return res.status(404).json({ error: "File not found in database" });
+      return res.status(404).json({ error: "File not found or unauthorized" });
     }
 
     const { newFilename } = req.body;
     filePath.filename = newFilename;
-    await writeFile("./filesDB.json", JSON.stringify(FileJsonData));
+    await writeFile("./filesDB.json", JSON.stringify(FileJsonData, null, 2));
     res.status(200).json({ message: "File renamed successfully" });
   } catch (error) {
     console.log(error);
     res.status(400).json({ error: "Rename failed" });
   }
-}; //✅
+};
 
 export const deleteFiles = async (req, res) => {
   try {
+    const userId = req.userId;
     const { id } = req.params;
-    const fileIndex = FileJsonData.findIndex((file) => file.id === id);
 
-    if (fileIndex === -1) {
+    const checkFile = FileJsonData.find((file) => file.id === id);
+
+    if (!checkFile) {
       return res.status(404).json({ error: "File not found in database" });
     }
+    if (checkFile.userId && checkFile.userId !== userId) {
+      console.log(
+        "❌ User ID match nahi hua! Owner:",
+        checkFile.userId,
+        "Requesting:",
+        userId,
+      );
+      return res
+        .status(403)
+        .json({ error: "You don't have permission to delete this file" });
+    }
 
+    const fileIndex = FileJsonData.findIndex((file) => file.id === id);
     const fileData = FileJsonData[fileIndex];
     const fileName = `${fileData.id}${fileData.extension}`;
     const filePath = safePath(BASE_PUBLIC, fileName);
 
-    await rm(filePath, { force: true });
+    try {
+      await rm(filePath, { force: true });
+    } catch (err) {
+      console.error(
+        "-> Physical file deletion skipped or failed:",
+        err.message,
+      );
+    }
+
     FileJsonData.splice(fileIndex, 1);
+
     const parentDirData = DirectoriesDB.find(
       (dir) => dir.id === fileData.parentDirId,
     );
 
-    if (parentDirData) {
+    if (parentDirData && Array.isArray(parentDirData.files)) {
       parentDirData.files = parentDirData.files.filter(
         (fileId) => fileId !== id,
       );
@@ -144,22 +180,30 @@ export const deleteFiles = async (req, res) => {
     console.error("DELETE ERROR:", err);
     res.status(500).json({ error: "Delete failed" });
   }
-}; //✅
+};
+
 export const getFile = async (req, res) => {
+  const userId = req.userId;
   const { id } = req.params;
-  const fileData = FileJsonData.find((file) => file.id === id);
+
+  const fileData = FileJsonData.find(
+    (file) => file.id === id && file.userId === userId,
+  );
+
   if (!fileData) {
-    return res.status(404).json({ error: "File not found in database" });
+    return res.status(404).json({ error: "File not found or unauthorized" });
   }
+
   const { extension } = fileData;
   const filePath = `${id}${extension}`;
+
   try {
     const safe = safePath(BASE_PUBLIC, filePath);
 
     if (req.query.action === "download") {
       res.set(
         "Content-Disposition",
-        `attachment; filename=${fileData.filename}`,
+        `attachment; filename="${fileData.filename}"`,
       );
     }
 
@@ -168,4 +212,4 @@ export const getFile = async (req, res) => {
     console.log(err);
     return res.status(400).json({ error: "Invalid file path" });
   }
-}; //✅
+};

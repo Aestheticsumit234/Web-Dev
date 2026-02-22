@@ -5,12 +5,13 @@ import {
   renameDirectory,
   deleteDirectory,
 } from "../controllers/directory.contoller.js";
+import { authenticateUser } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/:id?", readDirectory);
-router.post("/:parentdirId?", createDirectory);
-router.patch("/:id", renameDirectory);
-router.delete("/:id", deleteDirectory);
+router.get("/:id?", authenticateUser, readDirectory);
+router.post("/:parentdirId?", authenticateUser, createDirectory);
+router.patch("/:id", authenticateUser, renameDirectory);
+router.delete("/:id", authenticateUser, deleteDirectory);
 
 export default router;

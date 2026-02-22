@@ -56,15 +56,7 @@ const RegisterForm = () => {
       const data = await res.json();
 
       if (res.ok && data.message === "Registration successful") {
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            email: formData.email,
-            username: formData.username,
-          }),
-        );
-        login();
-        window.location.href = "/";
+        window.location.href = "/login";
       } else {
         setErrors({ submit: data.error || "Registration failed" });
       }

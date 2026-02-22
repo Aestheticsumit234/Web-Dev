@@ -3,11 +3,11 @@ import { useParams } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "./contexts/AuthContext";
 
-// Naye components import karein
 import { Header } from "./components/Header";
 import { ActionModal } from "./components/ActionModal";
 import { ItemRow } from "./components/ItemRow";
 import { UploadStatus } from "./components/UploadStatus";
+import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 
 function DirectoryView() {
   const BASE_URL = "http://localhost:8080";
@@ -19,6 +19,12 @@ function DirectoryView() {
 
   const [showFolderPopup, setShowFolderPopup] = useState(false);
   const [showRenamePopup, setShowRenamePopup] = useState(false);
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
+  const [deleteData, setDeleteData] = useState({
+    id: null,
+    type: "",
+    isBulk: false,
+  });
   const [newDirname, setNewDirname] = useState("");
   const [renameData, setRenameData] = useState({
     id: null,
@@ -34,7 +40,6 @@ function DirectoryView() {
   const renameInputRef = useRef(null);
   const xhrRef = useRef(null);
 
-  // --- Logic Functions (Same as before) ---
   useEffect(() => {
     if (showFolderPopup && folderInputRef.current) {
       folderInputRef.current.focus();
@@ -55,11 +60,15 @@ function DirectoryView() {
     }
   }, [showRenamePopup, renameData.id]);
 
-  // Getting All Directory Items
   async function getDirectoryItems() {
     setIsLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/directory/${dirId || ""}`);
+      const response = await fetch(`${BASE_URL}/directory/${dirId || ""}`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       const data = await response.json();
       setDirectoriesList(data?.directories || []);
       setFilesList(data?.file || []);
@@ -74,13 +83,13 @@ function DirectoryView() {
     getDirectoryItems();
   }, [dirId]);
 
-  // Handling create Directory
   async function handleCreateDirectory() {
     if (!newDirname.trim()) return;
     try {
       await fetch(`${BASE_URL}/directory${dirId ? `/${dirId}` : ""}`, {
         method: "POST",
         headers: { dirname: newDirname },
+        credentials: "include",
       });
       toast.success("Folder created!");
       setShowFolderPopup(false);
@@ -90,11 +99,11 @@ function DirectoryView() {
     }
   }
 
-  // Handling Rename or update file or directory
   const startRename = (id, name, type) => {
     setRenameData({ id, name, type });
     setShowRenamePopup(true);
   };
+
   async function handleRenameSave() {
     if (!renameData.name.trim()) return;
     const endpoint = renameData.type === "dir" ? "directory" : "files";
@@ -102,6 +111,7 @@ function DirectoryView() {
       await fetch(`${BASE_URL}/${endpoint}/${renameData.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ newFilename: renameData.name }),
       });
       toast.success("Renamed!");
@@ -112,7 +122,6 @@ function DirectoryView() {
     }
   }
 
-  // Handling Upload file
   async function uploadFile(e) {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -124,7 +133,15 @@ function DirectoryView() {
           const xhr = new XMLHttpRequest();
           xhrRef.current = xhr;
           xhr.open("POST", `${BASE_URL}/files/${dirId || ""}`, true);
+          xhr.withCredentials = true;
           xhr.setRequestHeader("filename", file.name);
+
+          xhr.addEventListener("load", () => {
+            setIsUploading(false);
+            setProgress(0);
+            getDirectoryItems();
+          });
+
           xhr.upload.addEventListener("progress", (e) => {
             setProgress(((e.loaded / e.total) * 100).toFixed(0));
           });
@@ -139,34 +156,61 @@ function DirectoryView() {
     }
   }
 
-  // Handling Single file or directory Delete
-  async function handleDelete(id, type) {
-    if (!window.confirm("Delete?")) return;
-    const endpoint = type === "dir" ? "directory" : "files";
-    try {
-      await fetch(`${BASE_URL}/${endpoint}/${id}`, { method: "DELETE" });
-      toast.success("Deleted");
-      getDirectoryItems();
-    } catch (e) {
-      toast.error("Error deleting");
-    }
+  function confirmDelete(id, type) {
+    setDeleteData({ id: id, type: type, isBulk: false });
+    setShowDeletePopup(true);
   }
 
-  // Handling Bulk delete
-  async function handleBulkDelete() {
-    if (!window.confirm(`Delete ${selectedItems.length} items?`)) return;
-    const deleteToast = toast.loading("Deleting...");
-    try {
-      const deletePromises = selectedItems.map(async (id) => {
-        await fetch(`${BASE_URL}/files/${id}`, { method: "DELETE" });
-        await fetch(`${BASE_URL}/directory/${id}`, { method: "DELETE" });
-      });
-      await Promise.allSettled(deletePromises);
-      toast.success("Deleted", { id: deleteToast });
-      setSelectedItems([]);
-      getDirectoryItems();
-    } catch (err) {
-      toast.error("Failed", { id: deleteToast });
+  function confirmBulkDelete() {
+    if (selectedItems.length === 0) return;
+    setDeleteData({ id: null, type: "", isBulk: true });
+    setShowDeletePopup(true);
+  }
+
+  async function executeDelete() {
+    setShowDeletePopup(false);
+
+    if (deleteData.isBulk) {
+      const deleteToast = toast.loading("Deleting items...");
+      try {
+        const deletePromises = selectedItems.map(async (id) => {
+          await fetch(`${BASE_URL}/files/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          await fetch(`${BASE_URL}/directory/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        });
+        await Promise.allSettled(deletePromises);
+        toast.success("Deleted", { id: deleteToast });
+        setSelectedItems([]);
+        getDirectoryItems();
+      } catch (err) {
+        toast.error("Failed", { id: deleteToast });
+      }
+    } else {
+      const endpoint = deleteData.type === "dir" ? "directory" : "files";
+      try {
+        await fetch(`${BASE_URL}/${endpoint}/${deleteData.id}`, {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        toast.success("Deleted");
+        getDirectoryItems();
+      } catch (e) {
+        toast.error("Error deleting");
+      }
     }
   }
 
@@ -182,7 +226,7 @@ function DirectoryView() {
 
       <Header
         selectedCount={selectedItems.length}
-        onBulkDelete={handleBulkDelete}
+        onBulkDelete={confirmBulkDelete}
         onNewFolderClick={() => {
           setNewDirname("New Folder");
           setShowFolderPopup(true);
@@ -190,6 +234,14 @@ function DirectoryView() {
         onUpload={uploadFile}
         isAuthenticated={isAuthenticated}
         onLogout={logout}
+      />
+
+      <DeleteConfirmModal
+        isOpen={showDeletePopup}
+        onCancel={() => setShowDeletePopup(false)}
+        onConfirm={executeDelete}
+        isBulk={deleteData.isBulk}
+        count={selectedItems.length}
       />
 
       {showFolderPopup && (
@@ -229,32 +281,48 @@ function DirectoryView() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {directoriesList.map((dir) => (
-              <ItemRow
-                key={dir.id}
-                type="dir"
-                id={dir.id}
-                name={dir.name}
-                isSelected={selectedItems.includes(dir.id)}
-                onToggleSelect={toggleSelect}
-                onRename={startRename}
-                onDelete={handleDelete}
-                baseUrl={BASE_URL}
-              />
-            ))}
-            {filesList.map((file) => (
-              <ItemRow
-                key={file.id}
-                type="file"
-                id={file.id}
-                name={file.filename}
-                isSelected={selectedItems.includes(file.id)}
-                onToggleSelect={toggleSelect}
-                onRename={startRename}
-                onDelete={handleDelete}
-                baseUrl={BASE_URL}
-              />
-            ))}
+            {directoriesList.length === 0 && filesList.length === 0 ? (
+              // Agar dono khali hain toh ek clean message dikhayein
+              <div className="p-16 flex flex-col items-center justify-center text-gray-400">
+                <div className="text-lg font-medium text-gray-600 mb-1">
+                  This folder is empty
+                </div>
+                <p className="text-sm">
+                  Drag and drop files here or click New Folder
+                </p>
+              </div>
+            ) : (
+              // Agar kuch bhi hai (file ya folder), toh list render karein
+              <div className="divide-y divide-gray-100">
+                {directoriesList.map((dir) => (
+                  <ItemRow
+                    key={dir.id}
+                    type="dir"
+                    id={dir.id}
+                    name={dir.name}
+                    isSelected={selectedItems.includes(dir.id)}
+                    onToggleSelect={toggleSelect}
+                    onRename={startRename}
+                    onDelete={confirmDelete}
+                    baseUrl={BASE_URL}
+                  />
+                ))}
+
+                {filesList.map((file) => (
+                  <ItemRow
+                    key={file.id}
+                    type="file"
+                    id={file.id}
+                    name={file.filename}
+                    isSelected={selectedItems.includes(file.id)}
+                    onToggleSelect={toggleSelect}
+                    onRename={startRename}
+                    onDelete={confirmDelete}
+                    baseUrl={BASE_URL}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

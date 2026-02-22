@@ -19,12 +19,15 @@ export const ActionModal = ({
           onKeyDown={(e) => e.key === "Enter" && onSave()}
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-1 text-gray-500">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1 text-gray-500 cursor-pointer"
+          >
             Cancel
           </button>
           <button
             onClick={onSave}
-            className="px-3 py-1 bg-blue-600 text-white rounded"
+            className="px-3 py-1 bg-blue-600 text-white rounded cursor-pointer"
           >
             {btnText}
           </button>

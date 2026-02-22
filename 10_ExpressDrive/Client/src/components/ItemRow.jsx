@@ -27,9 +27,9 @@ export const ItemRow = ({
       <div className="col-span-1">
         <button onClick={() => onToggleSelect(id)}>
           {isSelected ? (
-            <CheckSquare className="text-blue-500" size={18} />
+            <CheckSquare className="text-blue-500 cursor-pointer" size={18} />
           ) : (
-            <Square className="text-gray-300" size={18} />
+            <Square className="text-gray-300 cursor-pointer" size={18} />
           )}
         </button>
       </div>
@@ -60,13 +60,13 @@ export const ItemRow = ({
               href={`${baseUrl}/files/${id}`}
               target="_blank"
               rel="noreferrer"
-              className="p-1.5 text-gray-400 hover:text-blue-500 transition"
+              className="p-1.5 text-gray-400 hover:text-blue-500 transition cursor-pointer"
             >
               <ExternalLink size={16} />
             </a>
             <a
               href={`${baseUrl}/files/${id}?action=download`}
-              className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition"
+              className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition cursor-pointer"
             >
               <Download size={16} />
             </a>
@@ -74,13 +74,13 @@ export const ItemRow = ({
         )}
         <button
           onClick={() => onRename(id, name, type)}
-          className="p-1.5 text-gray-400 hover:text-blue-600 transition"
+          className="p-1.5 text-gray-400 hover:text-blue-600 transition cursor-pointer"
         >
           <Edit2 size={16} />
         </button>
         <button
           onClick={() => onDelete(id, type)}
-          className="p-1.5 text-gray-400 hover:text-red-600 transition"
+          className="p-1.5 text-gray-400 hover:text-red-600 transition cursor-pointer"
         >
           <Trash2 size={16} />
         </button>

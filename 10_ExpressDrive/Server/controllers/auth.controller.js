@@ -20,13 +20,11 @@ export const register = async (req, res) => {
         .json({ error: "Username, email, and password are required" });
     }
     const existingUser = UserData.find((user) => user.email === email);
-    console.log(existingUser);
 
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    // directory creation
     DirectoriesData.push({
       id: dirId,
       name: `root-${email}`,
@@ -36,7 +34,6 @@ export const register = async (req, res) => {
       directories: [],
     });
 
-    // userData creation
     const newUser = {
       id: userId,
       username,
@@ -65,8 +62,15 @@ export const login = async (req, res) => {
     const user = UserData.find((user) => user.email === email);
 
     if (!user || user.password !== password) {
-      return res.status(401).json({ error: "Invalid email or password" });
+      return res.status(401).json({ error: "Invalid Credentials!" });
     }
+
+    res.cookie("userId", user.id, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     res.status(200).json({
       message: "Login successful",
