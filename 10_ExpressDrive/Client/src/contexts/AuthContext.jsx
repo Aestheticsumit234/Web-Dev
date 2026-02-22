@@ -10,24 +10,50 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    setIsAuthenticated(!!user);
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error("Error parsing user data", error);
+        localStorage.removeItem("user");
+      }
+    }
     setLoading(false);
   }, []);
 
-  const login = () => {
+  const login = (userData) => {
     setIsAuthenticated(true);
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+  };
+
+  const getProfile = (updatedData) => {
+    const newData = { ...user, ...updatedData };
+    setUser(newData);
+    localStorage.setItem("user", JSON.stringify(newData));
   };
 
   const logout = () => {
     localStorage.removeItem("user");
     setIsAuthenticated(false);
+    setUser(null);
   };
 
-  const value = { isAuthenticated, login, logout, loading };
+  const value = {
+    isAuthenticated,
+    user,
+    login,
+    logout,
+    loading,
+    getProfile,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

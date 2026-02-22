@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Mail, User, Lock, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -10,12 +11,17 @@ const RegisterForm = () => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
 
-  if (isAuthenticated) {
-    window.location.href = "/";
-    return null;
-  }
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) return null;
 
   const validateForm = () => {
     const newErrors = {};
@@ -56,7 +62,7 @@ const RegisterForm = () => {
       const data = await res.json();
 
       if (res.ok && data.message === "Registration successful") {
-        window.location.href = "/login";
+        navigate("/login");
       } else {
         setErrors({ submit: data.error || "Registration failed" });
       }
@@ -71,7 +77,6 @@ const RegisterForm = () => {
     <div className="min-h-screen flex">
       <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-6 lg:p-8">
         <div className="max-w-sm w-full space-y-4">
-          {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-black mb-1">
               Create Account
@@ -80,7 +85,6 @@ const RegisterForm = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Email */}
             <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-700 uppercase tracking-wide">
                 Email
@@ -182,6 +186,10 @@ const RegisterForm = () => {
               Already have account?{" "}
               <a
                 href="/login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate("/login");
+                }}
                 className="text-blue-700 hover:underline font-medium"
               >
                 Log in

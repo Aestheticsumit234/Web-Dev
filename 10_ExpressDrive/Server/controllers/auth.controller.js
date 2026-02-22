@@ -1,6 +1,7 @@
 import { writeFile } from "fs/promises";
 import UserData from "../UserDB.json" with { type: "json" };
 import DirectoriesData from "../DirectoriesDB.json" with { type: "json" };
+import { log } from "console";
 
 export const register = async (req, res) => {
   try {
@@ -91,4 +92,18 @@ export const logout = async (req, res) => {
     console.log("Logout error:", error);
     res.status(400).json({ error: "Logout failed" });
   }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log(userId);
+    const user = UserData.find((user) => user.id === userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json({ message: "User found successfully!", user });
+  } catch (error) {}
 };

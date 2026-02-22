@@ -18,6 +18,7 @@ function DirectoryView() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [showFolderPopup, setShowFolderPopup] = useState(false);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showRenamePopup, setShowRenamePopup] = useState(false);
   const [showDeletePopup, setShowDeletePopup] = useState(false);
   const [deleteData, setDeleteData] = useState({
@@ -34,7 +35,7 @@ function DirectoryView() {
   const [selectedItems, setSelectedItems] = useState([]);
 
   const { dirId } = useParams();
-  const { logout, isAuthenticated } = useAuth();
+  const { logout, user, isAuthenticated } = useAuth();
 
   const folderInputRef = useRef(null);
   const renameInputRef = useRef(null);
@@ -220,6 +221,11 @@ function DirectoryView() {
     );
   };
 
+  const handleGetProfile = async () => {
+    console.log("Click on progile");
+    console.log(user);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 font-sans text-gray-800">
       <Toaster position="top-center" />
@@ -234,6 +240,10 @@ function DirectoryView() {
         onUpload={uploadFile}
         isAuthenticated={isAuthenticated}
         onLogout={logout}
+        handleGetProfile={() => {
+          handleGetProfile();
+          setShowProfilePopup(true);
+        }}
       />
 
       <DeleteConfirmModal
@@ -282,7 +292,6 @@ function DirectoryView() {
         ) : (
           <div className="divide-y divide-gray-100">
             {directoriesList.length === 0 && filesList.length === 0 ? (
-              // Agar dono khali hain toh ek clean message dikhayein
               <div className="p-16 flex flex-col items-center justify-center text-gray-400">
                 <div className="text-lg font-medium text-gray-600 mb-1">
                   This folder is empty
@@ -292,7 +301,6 @@ function DirectoryView() {
                 </p>
               </div>
             ) : (
-              // Agar kuch bhi hai (file ya folder), toh list render karein
               <div className="divide-y divide-gray-100">
                 {directoriesList.map((dir) => (
                   <ItemRow

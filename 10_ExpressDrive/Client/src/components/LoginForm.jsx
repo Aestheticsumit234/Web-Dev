@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Mail, Lock, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
@@ -9,12 +10,17 @@ const LoginForm = () => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
 
-  if (isAuthenticated) {
-    window.location.href = "/";
-    return null;
-  }
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) return null;
 
   const validateForm = () => {
     const newErrors = {};
@@ -53,16 +59,15 @@ const LoginForm = () => {
       const data = await res.json();
 
       if (res.ok && data.message === "Login successful") {
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            email: formData.email,
-            userId: data.user?.id,
-            username: data.user?.username,
-          }),
-        );
-        login();
-        window.location.href = "/";
+        const userData = {
+          email: formData.email,
+          userId: data.user?.id,
+          username: data.user?.username,
+        };
+
+        login(userData);
+
+        navigate("/");
       } else {
         setErrors({ submit: data.error || "Invalid credentials" });
       }
@@ -75,7 +80,7 @@ const LoginForm = () => {
 
   return (
     <div className="min-h-screen flex">
-      <div className="w-full lg:w-1/2 bg-linear-to-br from-blue-700 via-blue-800 to-gray-900  items-center justify-center p-12 hidden lg:flex">
+      <div className="w-full lg:w-1/2 bg-linear-to-br from-blue-700 via-blue-800 to-gray-900 items-center justify-center p-12 hidden lg:flex">
         <div className="text-center text-white max-w-sm">
           <div className="w-20 h-20 bg-white/20 rounded-2xl mx-auto mb-6 flex items-center justify-center backdrop-blur-sm">
             <svg
@@ -102,7 +107,6 @@ const LoginForm = () => {
 
       <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-6 lg:p-8">
         <div className="max-w-sm w-full space-y-4">
-          {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-black mb-1">Sign In</h1>
             <p className="text-sm text-gray-600">Welcome back to DevGurukul</p>
@@ -156,7 +160,6 @@ const LoginForm = () => {
                 <p className="text-red-600 text-xs">{errors.password}</p>
               )}
             </div>
-
             {errors.submit && (
               <div className="p-2 bg-red-50 border border-red-200 rounded-md">
                 <p className="text-red-700 text-xs text-center">
@@ -181,7 +184,6 @@ const LoginForm = () => {
             </button>
           </form>
 
-          {/* Footer */}
           <div className="pt-4 border-t border-gray-200 text-center">
             <p className="text-xs text-gray-600">
               Don't have account?{" "}
