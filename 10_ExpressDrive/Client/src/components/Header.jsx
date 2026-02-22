@@ -20,10 +20,10 @@ export const Header = ({
   onUpload,
   isAuthenticated,
   onLogout,
+  disableActions = false,
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const dropdownRef = useRef(null);
@@ -66,7 +66,12 @@ export const Header = ({
           {selectedCount > 0 && (
             <button
               onClick={onBulkDelete}
-              className="bg-red-100 cursor-pointer text-red-600 px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium flex items-center justify-center gap-2 hover:bg-red-200 transition"
+              disabled={disableActions}
+              className={`px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition ${
+                disableActions
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-red-100 cursor-pointer text-red-600 hover:bg-red-200"
+              }`}
             >
               <Trash2 size={16} />
               <span>Delete ({selectedCount})</span>
@@ -75,13 +80,24 @@ export const Header = ({
 
           <button
             onClick={onNewFolderClick}
-            className="cursor-pointer justify-center bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-1.5 rounded-md flex items-center gap-2 hover:bg-blue-700 transition text-sm"
+            disabled={disableActions}
+            className={`justify-center text-white px-3 sm:px-4 py-2 sm:py-1.5 rounded-md flex items-center gap-2 transition text-sm ${
+              disableActions
+                ? "bg-blue-300 cursor-not-allowed opacity-70"
+                : "bg-blue-600 cursor-pointer hover:bg-blue-700"
+            }`}
           >
             <Plus size={18} />
             <span>New Folder</span>
           </button>
 
-          <label className="justify-center flex items-center gap-2 bg-emerald-600 text-white px-3 sm:px-4 py-2 sm:py-1.5 rounded-md cursor-pointer hover:bg-emerald-700 transition text-sm font-medium">
+          <label
+            className={`justify-center flex items-center gap-2 text-white px-3 sm:px-4 py-2 sm:py-1.5 rounded-md transition text-sm font-medium ${
+              disableActions
+                ? "bg-emerald-300 cursor-not-allowed pointer-events-none opacity-70"
+                : "bg-emerald-600 cursor-pointer hover:bg-emerald-700"
+            }`}
+          >
             <UploadCloud size={18} />
             <span>Upload</span>
             <input
@@ -89,6 +105,7 @@ export const Header = ({
               className="hidden"
               multiple
               onChange={onUpload}
+              disabled={disableActions}
             />
           </label>
 
@@ -96,7 +113,7 @@ export const Header = ({
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="w-full sm:w-auto bg-gray-100 text-gray-700 p-2 sm:px-3 sm:py-1.5 rounded-md hover:bg-red-500 hover:text-white transition text-sm font-medium flex items-center justify-center gap-2 group"
+                className="w-full cursor-pointer sm:w-auto bg-gray-100 text-gray-700 p-2 sm:px-3 sm:py-1.5 rounded-md hover:bg-red-500 hover:text-white transition text-sm font-medium flex items-center justify-center gap-2 group"
                 title="My Account"
               >
                 <CircleUserRound size={18} className="group-hover:text-white" />
@@ -111,7 +128,7 @@ export const Header = ({
                       setShowProfileModal(true);
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-3 transition"
+                    className="w-full cursor-pointer text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-3 transition"
                   >
                     <User size={16} /> Profile
                   </button>
@@ -122,7 +139,7 @@ export const Header = ({
                       setIsProfileOpen(false);
                       onLogout();
                     }}
-                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition"
+                    className="w-full cursor-pointer text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition"
                   >
                     <LogOut size={16} /> Logout
                   </button>

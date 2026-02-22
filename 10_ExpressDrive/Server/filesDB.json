@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": "92929225-ac97-4553-b05d-5466e0ca88b3",
+    "extension": ".png",
+    "filename": "test02.png",
+    "parentDirId": "283050a5-e181-4e2b-b581-1aa3806916e5",
+    "userId": "7dad94bd-d0d9-4481-b8d4-140d305d6224"
+  },
+  {
+    "id": "635025a5-7137-445e-bc8d-a5196baa7b36",
+    "extension": ".png",
+    "filename": "testing.png",
+    "parentDirId": "283050a5-e181-4e2b-b581-1aa3806916e5",
+    "userId": "7dad94bd-d0d9-4481-b8d4-140d305d6224"
+  }
+]

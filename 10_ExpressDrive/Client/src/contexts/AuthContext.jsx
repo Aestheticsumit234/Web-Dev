@@ -40,10 +40,20 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("user", JSON.stringify(newData));
   };
 
-  const logout = () => {
-    localStorage.removeItem("user");
-    setIsAuthenticated(false);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await fetch("http://localhost:8080/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Error logging out from server:", error);
+    } finally {
+      localStorage.removeItem("user");
+      setIsAuthenticated(false);
+      setUser(null);
+      window.location.href = "/login";
+    }
   };
 
   const value = {

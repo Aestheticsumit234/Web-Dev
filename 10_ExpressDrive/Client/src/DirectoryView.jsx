@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "./contexts/AuthContext";
+import { Lock } from "lucide-react";
 
 import { Header } from "./components/Header";
 import { ActionModal } from "./components/ActionModal";
@@ -16,6 +17,8 @@ function DirectoryView() {
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [accessError, setAccessError] = useState(false);
 
   const [showFolderPopup, setShowFolderPopup] = useState(false);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
@@ -35,11 +38,35 @@ function DirectoryView() {
   const [selectedItems, setSelectedItems] = useState([]);
 
   const { dirId } = useParams();
-  const { logout, user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const { logout, user, isAuthenticated, getProfile } = useAuth();
 
   const folderInputRef = useRef(null);
   const renameInputRef = useRef(null);
   const xhrRef = useRef(null);
+
+  useEffect(() => {
+    const fetchFullProfile = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const response = await fetch(`${BASE_URL}/auth/getme`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          getProfile(data.user);
+        }
+      } catch (error) {
+        console.error("Failed to fetch full user profile:", error);
+      }
+    };
+
+    fetchFullProfile();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (showFolderPopup && folderInputRef.current) {
@@ -63,6 +90,7 @@ function DirectoryView() {
 
   async function getDirectoryItems() {
     setIsLoading(true);
+    setAccessError(false);
     try {
       const response = await fetch(`${BASE_URL}/directory/${dirId || ""}`, {
         credentials: "include",
@@ -70,11 +98,20 @@ function DirectoryView() {
           "Content-Type": "application/json",
         },
       });
+
+      if (!response.ok) {
+        setAccessError(true);
+        setDirectoriesList([]);
+        setFilesList([]);
+        return;
+      }
+
       const data = await response.json();
       setDirectoriesList(data?.directories || []);
       setFilesList(data?.file || []);
     } catch (error) {
-      console.error(error);
+      console.error("Fetch error:", error);
+      setAccessError(true);
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +259,7 @@ function DirectoryView() {
   };
 
   const handleGetProfile = async () => {
-    console.log("Click on progile");
+    console.log("Click on profile");
     console.log(user);
   };
 
@@ -231,6 +268,7 @@ function DirectoryView() {
       <Toaster position="top-center" />
 
       <Header
+        disableActions={accessError}
         selectedCount={selectedItems.length}
         onBulkDelete={confirmBulkDelete}
         onNewFolderClick={() => {
@@ -288,6 +326,25 @@ function DirectoryView() {
         {isLoading ? (
           <div className="p-10 text-center text-gray-400">
             Loading drive items...
+          </div>
+        ) : accessError ? (
+          <div className="p-16 flex flex-col items-center justify-center text-gray-400">
+            <div className="bg-gray-100 p-4 rounded-full mb-4">
+              <Lock className="w-8 h-8 text-gray-500" />
+            </div>
+            <div className="text-lg font-bold text-gray-700 mb-1">
+              Access Denied
+            </div>
+            <p className="text-sm mb-6 max-w-sm text-center">
+              This directory doesn't exist or belongs to another user. You don't
+              have permission to view or modify it.
+            </p>
+            <button
+              onClick={() => navigate("/")}
+              className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-md text-sm font-medium hover:bg-blue-700 transition"
+            >
+              Go to My Drive
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">

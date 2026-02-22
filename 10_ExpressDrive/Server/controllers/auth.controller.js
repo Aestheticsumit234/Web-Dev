@@ -75,7 +75,12 @@ export const login = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
-      user: { id: user.id, username: user.username, email: user.email },
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        password: user.password,
+      },
     });
   } catch (error) {
     res.status(400).json({ error: "Login failed" });
@@ -84,6 +89,7 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
+    res.clearCookie("userId");
     console.log("Logout requested");
     res.status(200).json({
       message: "Logout successful",
@@ -99,11 +105,20 @@ export const getMe = async (req, res) => {
     const userId = req.userId;
     console.log(userId);
     const user = UserData.find((user) => user.id === userId);
+    console.log(user);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.status(200).json({ message: "User found successfully!", user });
+    res.status(200).json({
+      message: "User found successfully!",
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        password: user.password,
+      },
+    });
   } catch (error) {}
 };

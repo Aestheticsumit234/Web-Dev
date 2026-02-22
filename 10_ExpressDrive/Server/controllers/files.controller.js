@@ -201,10 +201,11 @@ export const getFile = async (req, res) => {
     const safe = safePath(BASE_PUBLIC, filePath);
 
     if (req.query.action === "download") {
-      res.set(
-        "Content-Disposition",
-        `attachment; filename="${fileData.filename}"`,
-      );
+      // res.set(
+      //   "Content-Disposition",
+      //   `attachment; filename="${fileData.filename}"`,
+      // );
+      return res.download(safe, fileData.filename);
     }
 
     res.sendFile(safe);
