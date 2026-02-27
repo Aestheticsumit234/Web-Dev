@@ -12,6 +12,6 @@ export const authenticateUser = async (req, res, next) => {
 
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  req.userId = user._id.toString();
+  req.user = user;
   next();
 };

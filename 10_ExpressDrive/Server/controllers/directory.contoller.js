@@ -1,45 +1,31 @@
 import { rm, writeFile } from "fs/promises";
-import path from "path";
-import crypto from "crypto";
-import { safePath } from "../utils/safePath.js";
-import DirectoriesDB from "../DirectoriesDB.json" with { type: "json" };
-import filesDataJSON from "../filesDB.json" with { type: "json" };
+import path from "path"; // delete krna hai
+import { safePath } from "../utils/safePath.js"; // iska koi kaam nhi hai ab
+import DirectoriesDB from "../DirectoriesDB.json" with { type: "json" }; // delete krna hai
+import filesDataJSON from "../filesDB.json" with { type: "json" }; // dele krna hai
+import { ObjectId } from "mongodb";
 
 const BASE_PUBLIC = path.resolve("./public");
 
+// read directory contents
 export const readDirectory = async (req, res) => {
   try {
-    const { userId } = req;
-    const { id } = req.params;
-    const { db } = req;
-    console.log("User id from direcrtory -==>", userId);
+    const { user, db } = req;
+    const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
+    const dirCollection = db.collection("directories");
 
-    const currentDirectory = !id
-      ? DirectoriesDB.find(
-          (folder) => folder.userId === userId && folder.parentDirId === null,
-        )
-      : DirectoriesDB.find(
-          (folder) => folder.id === id && folder.userId === userId,
-        );
+    const directoriesData = await dirCollection.findOne({ _id: id });
 
-    if (!currentDirectory) {
-      return res.status(404).json({
-        error: "Directory not found or unauthorized access",
-        file: [],
-        directories: [],
-      });
+    if (!directoriesData) {
+      return res.status(404).json({ message: "Directory not found" });
     }
-
-    const file = (currentDirectory.files || [])
-      .map((fileId) => filesDataJSON.find((f) => f.id === fileId))
-      .filter(Boolean);
-
-    const directories = (currentDirectory.directories || [])
-      .map((dirId) => DirectoriesDB.find((d) => d.id === dirId))
-      .filter(Boolean);
+    const file = []; // i will do it later for file in directory
+    const directories = await dirCollection
+      .find({ parentDirId: new ObjectId(id) })
+      .toArray();
 
     res.json({
-      ...currentDirectory,
+      ...directoriesData,
       file,
       directories,
     });
@@ -51,24 +37,14 @@ export const readDirectory = async (req, res) => {
 
 export const createDirectory = async (req, res) => {
   try {
-    const userId = req.userId;
-    const { dirname } = req.headers;
+    const { user, db } = req;
+    const parentDirId = req.params.parentdirId
+      ? new ObjectId(req.params.parentdirId)
+      : user.rootDirId;
+    const dirname = req.headers.dirname;
+    const dirCollection = db.collection("directories");
 
-    const userRoot = DirectoriesDB.find(
-      (d) => d.userId === userId && d.parentDirId === null,
-    );
-    const parentDirId = req.params.parentdirId || userRoot?.id;
-
-    if (!parentDirId) {
-      return res.status(400).json({ error: "Parent directory not found" });
-    }
-
-    const id = crypto.randomUUID();
-    const fullPath = safePath(BASE_PUBLIC, dirname);
-
-    const parentDir = DirectoriesDB.find(
-      (folder) => folder.id === parentDirId && folder.userId === userId,
-    );
+    const parentDir = await dirCollection.findOne({ _id: parentDirId });
 
     if (!parentDir) {
       return res
@@ -76,21 +52,12 @@ export const createDirectory = async (req, res) => {
         .json({ error: "Parent directory not found or unauthorized" });
     }
 
-    parentDir.directories.push(id);
-
-    DirectoriesDB.push({
-      id: id,
+    const saveDir = await dirCollection.insertOne({
       name: dirname,
-      userId: userId,
-      parentDirId: parentDirId,
-      files: [],
-      directories: [],
+      userId: user._id,
+      parentDirId,
     });
 
-    await writeFile(
-      "./DirectoriesDB.json",
-      JSON.stringify(DirectoriesDB, null, 2),
-    );
     res.json({ message: "Directory created successfully" });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -99,17 +66,19 @@ export const createDirectory = async (req, res) => {
 
 export const renameDirectory = async (req, res) => {
   try {
-    const userId = req.userId;
+    const { user, db } = req;
     const { id } = req.params;
     const { newFilename } = req.body;
+    const dirCollection = db.collection("directories");
 
     if (!id || !newFilename) {
       return res.status(400).json({ error: "Invalid data" });
     }
 
-    const dirData = DirectoriesDB.find(
-      (dir) => dir.id === id && dir.userId === userId,
-    );
+    const dirData = await dirCollection.findOne({
+      _id: new ObjectId(id),
+      userId: user._id,
+    });
 
     if (!dirData) {
       return res
@@ -118,11 +87,10 @@ export const renameDirectory = async (req, res) => {
     }
 
     dirData.name = newFilename;
-    await writeFile(
-      "./DirectoriesDB.json",
-      JSON.stringify(DirectoriesDB, null, 2),
+    await dirCollection.updateOne(
+      { _id: dirData._id },
+      { $set: { name: newFilename } },
     );
-
     res.json({ message: "Directory renamed successfully" });
   } catch (error) {
     console.error("Rename Directory Error:", error);
@@ -130,6 +98,7 @@ export const renameDirectory = async (req, res) => {
   }
 };
 
+// when i done the file controller i will do it for file in directory and then i will do it for directory and file together because when i delete directory i need to delete all files in this directory and all sub directories and all files in sub directories
 export const deleteDirectory = async (req, res) => {
   try {
     const userId = req.userId;

@@ -86,7 +86,7 @@ function DirectoryView() {
       input.focus();
       input.setSelectionRange(0, selectionEnd);
     }
-  }, [showRenamePopup, renameData.id]);
+  }, [showRenamePopup, renameData._id]);
 
   async function getDirectoryItems() {
     setIsLoading(true);
@@ -361,11 +361,11 @@ function DirectoryView() {
               <div className="divide-y divide-gray-100">
                 {directoriesList.map((dir) => (
                   <ItemRow
-                    key={dir.id}
+                    key={dir._id}
                     type="dir"
-                    id={dir.id}
+                    id={dir._id}
                     name={dir.name}
-                    isSelected={selectedItems.includes(dir.id)}
+                    isSelected={selectedItems.includes(dir._id)}
                     onToggleSelect={toggleSelect}
                     onRename={startRename}
                     onDelete={confirmDelete}
@@ -375,11 +375,11 @@ function DirectoryView() {
 
                 {filesList.map((file) => (
                   <ItemRow
-                    key={file.id}
+                    key={file._id}
                     type="file"
-                    id={file.id}
+                    id={file._id}
                     name={file.filename}
-                    isSelected={selectedItems.includes(file.id)}
+                    isSelected={selectedItems.includes(file._id)}
                     onToggleSelect={toggleSelect}
                     onRename={startRename}
                     onDelete={confirmDelete}

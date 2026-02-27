@@ -22,8 +22,6 @@ export const register = async (req, res) => {
     const userRootDir = await dirCollection.insertOne({
       name: `root-${email}`,
       parentDirId: null,
-      files: [],
-      directories: [],
     });
 
     const rootDirId = userRootDir.insertedId;
@@ -96,12 +94,7 @@ export const logout = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    const userId = req.userId;
-
-    const user = await req.db
-      .collection("users")
-      .findOne({ _id: new ObjectId(userId) });
-
+    const user = req.user;
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -115,5 +108,7 @@ export const getMe = async (req, res) => {
         password: user.password,
       },
     });
-  } catch (error) {}
+  } catch (error) {
+    console.log("GetMe error:", error);
+  }
 };
