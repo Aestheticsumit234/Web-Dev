@@ -6,26 +6,39 @@ import directoryRouter from "./routes/directory.routes.js";
 import filesRoutes from "./routes/files.routes.js";
 import trashRoutes from "./routes/trash.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import connectDB from "./Storage/connectDB.js";
 
-const app = express();
-app.use(express.json());
-app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
-const PORT = process.env.PORT || 8080;
+// Database conmnection
+try {
+  const db = await connectDB();
 
-app.use(
-  cors({
-    origin: ["http://localhost:5173"],
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-    credentials: true,
-  }),
-);
+  const app = express();
+  app.use(express.json());
+  app.use(cookieParser());
+  app.use(express.urlencoded({ extended: true }));
+  const PORT = process.env.PORT || 8080;
 
-app.use("/auth", authRoutes);
-app.use("/directory", directoryRouter);
-app.use("/files", filesRoutes);
-app.use("/trash", trashRoutes);
+  app.use(
+    cors({
+      origin: ["http://localhost:5173"],
+      methods: ["GET", "POST", "PATCH", "DELETE"],
+      credentials: true,
+    }),
+  );
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+  app.use((req, res, next) => {
+    req.db = db;
+    next();
+  });
+
+  app.use("/auth", authRoutes);
+  app.use("/directory", directoryRouter);
+  app.use("/files", filesRoutes);
+  app.use("/trash", trashRoutes);
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+} catch (error) {
+  console.log(error);
+}

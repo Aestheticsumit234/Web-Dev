@@ -1,52 +1,43 @@
 import { writeFile } from "fs/promises";
-import UserData from "../UserDB.json" with { type: "json" };
-import DirectoriesData from "../DirectoriesDB.json" with { type: "json" };
-import { log } from "console";
+import { Db, ObjectId } from "mongodb";
 
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    const userId = crypto.randomUUID();
-    const dirId = crypto.randomUUID();
-
-    console.log(`
-        Username: ${username}
-        Email: ${email}
-        Password: ${password}
-        `);
+    const db = req.db;
+    const dirCollection = db.collection("directories");
 
     if (!username || !email || !password) {
       return res
         .status(400)
         .json({ error: "Username, email, and password are required" });
     }
-    const existingUser = UserData.find((user) => user.email === email);
+
+    const existingUser = await db.collection("users").findOne({ email });
 
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    DirectoriesData.push({
-      id: dirId,
+    const userRootDir = await dirCollection.insertOne({
       name: `root-${email}`,
-      userId,
       parentDirId: null,
       files: [],
       directories: [],
     });
 
-    const newUser = {
-      id: userId,
+    const rootDirId = userRootDir.insertedId;
+
+    const createdUser = await db.collection("users").insertOne({
       username,
       email,
       password,
-      rootDirId: dirId,
-    };
+      rootDirId,
+    });
 
-    UserData.push(newUser);
-    await writeFile("./DirectoriesDB.json", JSON.stringify(DirectoriesData));
-    await writeFile("./UserDB.json", JSON.stringify(UserData));
-    res.status(200).json({ message: "Registration successful", user: newUser });
+    const userId = createdUser.insertedId;
+    await dirCollection.updateOne({ _id: rootDirId }, { $set: { userId } });
+    res.status(200).json({ message: "Registration successful" });
   } catch (error) {
     console.log(error);
     res.status(400).json({ error: "Registration failed" });
@@ -56,17 +47,20 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const db = req.db;
+
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
-    const user = UserData.find((user) => user.email === email);
+    const user = await db.collection("users").findOne({ email, password });
 
-    if (!user || user.password !== password) {
+    if (!user) {
       return res.status(401).json({ error: "Invalid Credentials!" });
     }
 
-    res.cookie("userId", user.id, {
+    const userOId = user._id.toString();
+    res.cookie("userId", userOId, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
@@ -76,7 +70,7 @@ export const login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       user: {
-        id: user.id,
+        id: userOId,
         username: user.username,
         email: user.email,
         password: user.password,
@@ -103,9 +97,10 @@ export const logout = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const userId = req.userId;
-    console.log(userId);
-    const user = UserData.find((user) => user.id === userId);
-    console.log(user);
+
+    const user = await req.db
+      .collection("users")
+      .findOne({ _id: new ObjectId(userId) });
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -114,7 +109,7 @@ export const getMe = async (req, res) => {
     res.status(200).json({
       message: "User found successfully!",
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
         email: user.email,
         password: user.password,

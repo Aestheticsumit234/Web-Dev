@@ -1,10 +1,17 @@
-import userData from "../UserDB.json" with { type: "json" };
+import { ObjectId } from "mongodb";
 
-export const authenticateUser = (req, res, next) => {
+export const authenticateUser = async (req, res, next) => {
   const { userId } = req.cookies;
-  const user = userData.find((user) => user.id === userId);
-  if (!userId || !user) return res.status(401).json({ error: "Unauthorized" });
+  const db = req.db;
 
-  req.userId = userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const user = await db
+    .collection("users")
+    .findOne({ _id: new ObjectId(userId) });
+
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  req.userId = user._id.toString();
   next();
 };

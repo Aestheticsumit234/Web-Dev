@@ -9,8 +9,10 @@ const BASE_PUBLIC = path.resolve("./public");
 
 export const readDirectory = async (req, res) => {
   try {
-    const userId = req.userId;
+    const { userId } = req;
     const { id } = req.params;
+    const { db } = req;
+    console.log("User id from direcrtory -==>", userId);
 
     const currentDirectory = !id
       ? DirectoriesDB.find(

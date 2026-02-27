@@ -132,12 +132,6 @@ export const deleteFiles = async (req, res) => {
       return res.status(404).json({ error: "File not found in database" });
     }
     if (checkFile.userId && checkFile.userId !== userId) {
-      console.log(
-        "❌ User ID match nahi hua! Owner:",
-        checkFile.userId,
-        "Requesting:",
-        userId,
-      );
       return res
         .status(403)
         .json({ error: "You don't have permission to delete this file" });
