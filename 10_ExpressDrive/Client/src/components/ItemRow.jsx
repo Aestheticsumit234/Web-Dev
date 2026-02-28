@@ -8,7 +8,38 @@ import {
   Trash2,
   ExternalLink,
   Download,
+  Image as ImageIcon,
+  FileText,
+  FileCode,
 } from "lucide-react";
+
+const getFileIcon = (filename) => {
+  if (!filename.includes("."))
+    return <File className="text-blue-400" size={20} />;
+
+  const ext = filename.split(".").pop().toLowerCase();
+
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "svg":
+    case "webp":
+      return <ImageIcon className="text-purple-500" size={20} />;
+    case "pdf":
+      return <FileText className="text-red-500" size={20} />;
+    case "doc":
+    case "docx":
+    case "txt":
+      return <FileText className="text-blue-600" size={20} />;
+    case "md":
+    case "markdown":
+      return <FileCode className="text-gray-700" size={20} />;
+    default:
+      return <File className="text-blue-400" size={20} />;
+  }
+};
 
 export const ItemRow = ({
   type,
@@ -47,7 +78,7 @@ export const ItemRow = ({
           </>
         ) : (
           <>
-            <File className="text-blue-400" size={20} />
+            {getFileIcon(name)}
             <span className="text-sm text-gray-700 truncate">{name}</span>
           </>
         )}
@@ -58,7 +89,6 @@ export const ItemRow = ({
           <>
             <a
               href={`${baseUrl}/files/${id}`}
-              target="_blank"
               rel="noreferrer"
               className="p-1.5 text-gray-400 hover:text-blue-500 transition cursor-pointer"
             >

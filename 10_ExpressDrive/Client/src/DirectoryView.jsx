@@ -17,13 +17,12 @@ function DirectoryView() {
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
   const [accessError, setAccessError] = useState(false);
-
   const [showFolderPopup, setShowFolderPopup] = useState(false);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showRenamePopup, setShowRenamePopup] = useState(false);
   const [showDeletePopup, setShowDeletePopup] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
   const [deleteData, setDeleteData] = useState({
     id: null,
     type: "",
@@ -35,7 +34,6 @@ function DirectoryView() {
     name: "",
     type: "",
   });
-  const [selectedItems, setSelectedItems] = useState([]);
 
   const { dirId } = useParams();
   const navigate = useNavigate();
@@ -378,7 +376,7 @@ function DirectoryView() {
                     key={file._id}
                     type="file"
                     id={file._id}
-                    name={file.filename}
+                    name={file.name}
                     isSelected={selectedItems.includes(file._id)}
                     onToggleSelect={toggleSelect}
                     onRename={startRename}

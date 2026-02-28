@@ -11,17 +11,25 @@ const BASE_PUBLIC = path.resolve("./public");
 export const readDirectory = async (req, res) => {
   try {
     const { user, db } = req;
-    const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
+    const id = req.params.id
+      ? new ObjectId(req.params.id)
+      : new ObjectId(user.rootDirId);
     const dirCollection = db.collection("directories");
 
-    const directoriesData = await dirCollection.findOne({ _id: id });
+    const directoriesData = await dirCollection.findOne({
+      _id: id,
+      userId: user._id,
+    });
 
     if (!directoriesData) {
       return res.status(404).json({ message: "Directory not found" });
     }
-    const file = []; // i will do it later for file in directory
+    const file = await db
+      .collection("files")
+      .find({ parentDirId: directoriesData._id })
+      .toArray();
     const directories = await dirCollection
-      .find({ parentDirId: new ObjectId(id) })
+      .find({ parentDirId: directoriesData._id })
       .toArray();
 
     res.json({
@@ -86,7 +94,6 @@ export const renameDirectory = async (req, res) => {
         .json({ error: "Directory not found or unauthorized" });
     }
 
-    dirData.name = newFilename;
     await dirCollection.updateOne(
       { _id: dirData._id },
       { $set: { name: newFilename } },
@@ -101,8 +108,8 @@ export const renameDirectory = async (req, res) => {
 // when i done the file controller i will do it for file in directory and then i will do it for directory and file together because when i delete directory i need to delete all files in this directory and all sub directories and all files in sub directories
 export const deleteDirectory = async (req, res) => {
   try {
-    const userId = req.userId;
-    const { id } = req.params;
+    const { user, db } = req;
+    const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
 
     if (!id) {
       return res.status(400).json({ error: "Directory ID required" });

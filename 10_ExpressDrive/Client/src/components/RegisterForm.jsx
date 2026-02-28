@@ -95,6 +95,7 @@ const RegisterForm = () => {
                   type="email"
                   name="email"
                   value={formData.email}
+                  autoComplete="off"
                   onChange={handleChange}
                   className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-md focus:ring-1 focus:ring-blue-700 focus:border-blue-700 transition-all ${
                     errors.email
@@ -120,6 +121,7 @@ const RegisterForm = () => {
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
+                  autoComplete="off"
                   className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-md focus:ring-1 focus:ring-blue-700 focus:border-blue-700 transition-all ${
                     errors.username
                       ? "border-red-400 bg-red-50"
@@ -144,6 +146,7 @@ const RegisterForm = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="new-password"
                   className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-md focus:ring-1 focus:ring-blue-700 focus:border-blue-700 transition-all ${
                     errors.password
                       ? "border-red-400 bg-red-50"

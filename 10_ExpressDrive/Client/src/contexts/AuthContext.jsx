@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 const AuthContext = createContext();
 
@@ -9,24 +9,27 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  // 1. Lazy initialization: Page load hote hi directly localStorage se data lo
+  const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
+        return JSON.parse(storedUser);
       } catch (error) {
-        console.error("Error parsing user data", error);
         localStorage.removeItem("user");
+        return null;
       }
     }
-    setLoading(false);
-  }, []);
+    return null;
+  });
+
+  // 2. Agar user object hai, toh default 'true' hoga, warna 'false'
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!user);
+
+  // 3. Loading default false kardo kyunki ab delay nahi hai
+  const [loading, setLoading] = useState(false);
+
+  // (Ab yahan woh useEffect likhne ki zarurat hi nahi hai, humne delete kar diya!)
 
   const login = (userData) => {
     setIsAuthenticated(true);
@@ -44,7 +47,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await fetch("http://localhost:8080/auth/logout", {
         method: "POST",
-        credentials: "include",
+        credentials: "include", // Backend se cookie clear karne ke liye
       });
     } catch (error) {
       console.error("Error logging out from server:", error);
@@ -52,6 +55,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("user");
       setIsAuthenticated(false);
       setUser(null);
+      // window.location.href ki jagah tum navigate() bhi use kar sakte ho agar protected route use kar rahe ho, par ye bhi thik hai.
       window.location.href = "/login";
     }
   };
