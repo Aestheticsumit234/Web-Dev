@@ -1,8 +1,6 @@
-import { rm, writeFile } from "fs/promises";
+import { rm } from "fs/promises";
 import path from "path"; // delete krna hai
 import { safePath } from "../utils/safePath.js"; // iska koi kaam nhi hai ab
-import DirectoriesDB from "../DirectoriesDB.json" with { type: "json" }; // delete krna hai
-import filesDataJSON from "../filesDB.json" with { type: "json" }; // dele krna hai
 import { ObjectId } from "mongodb";
 
 const BASE_PUBLIC = path.resolve("./public");
@@ -105,73 +103,62 @@ export const renameDirectory = async (req, res) => {
   }
 };
 
-// when i done the file controller i will do it for file in directory and then i will do it for directory and file together because when i delete directory i need to delete all files in this directory and all sub directories and all files in sub directories
 export const deleteDirectory = async (req, res) => {
   try {
     const { user, db } = req;
     const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
+    const dirCollection = db.collection("directories");
+    const fileCollection = db.collection("files");
 
-    if (!id) {
-      return res.status(400).json({ error: "Directory ID required" });
-    }
-
-    const targetDir = DirectoriesDB.find(
-      (d) => d.id === id && d.userId === userId,
+    const dirData = await dirCollection.findOne(
+      { _id: id, userId: user._id },
+      { projection: { _id: 1 } },
     );
 
-    if (!targetDir) {
+    if (!dirData) {
       return res
         .status(403)
         .json({ error: "Directory not found or unauthorized" });
     }
+    const getDirectoryContents = async (parentId) => {
+      let fileData = await fileCollection
+        .find(
+          { parentDirId: parentId },
+          { projection: { _id: 1, extension: 1 } },
+        )
+        .toArray();
+      let Directories = await dirCollection
+        .find({ parentDirId: parentId }, { projection: { _id: 1 } })
+        .toArray();
+      for (let { _id, name } of Directories) {
+        const { fileData: childFile, Directories: childDirectories } =
+          await getDirectoryContents(new ObjectId(_id));
 
-    const recursiveDelete = async (dirId) => {
-      const dirIndex = DirectoriesDB.findIndex((d) => d.id === dirId);
-      if (dirIndex === -1) return;
-
-      const dirData = DirectoriesDB[dirIndex];
-
-      if (dirData.files) {
-        for (const fileId of dirData.files) {
-          const fIndex = filesDataJSON.findIndex((f) => f.id === fileId);
-          if (fIndex !== -1) {
-            const file = filesDataJSON[fIndex];
-            const physicalPath = safePath(
-              BASE_PUBLIC,
-              `${file.id}${file.extension}`,
-            );
-            try {
-              await rm(physicalPath, { force: true });
-            } catch (err) {
-              console.error(`Failed to delete physical file: ${physicalPath}`);
-            }
-            filesDataJSON.splice(fIndex, 1);
-          }
-        }
+        fileData = [...fileData, ...childFile];
+        Directories = [...Directories, ...childDirectories];
       }
 
-      if (dirData.directories) {
-        for (const subDirId of [...dirData.directories]) {
-          await recursiveDelete(subDirId);
-        }
-      }
-
-      DirectoriesDB.splice(dirIndex, 1);
+      return {
+        fileData,
+        Directories,
+      };
     };
 
-    const parentId = targetDir.parentDirId;
-    await recursiveDelete(id);
+    const { fileData, Directories } = await getDirectoryContents(id);
 
-    const parentDir = DirectoriesDB.find((d) => d.id === parentId);
-    if (parentDir && parentDir.directories) {
-      parentDir.directories = parentDir.directories.filter((dId) => dId !== id);
+    for (let { _id, extension } of fileData) {
+      const filePath = safePath(BASE_PUBLIC, `${_id}${extension}`);
+      await rm(filePath, { force: true });
     }
 
-    await Promise.all([
-      writeFile("./filesDB.json", JSON.stringify(filesDataJSON, null, 2)),
-      writeFile("./DirectoriesDB.json", JSON.stringify(DirectoriesDB, null, 2)),
-    ]);
+    await fileCollection.deleteMany({
+      _id: { $in: fileData.map((id) => id._id) },
+    });
+    await dirCollection.deleteMany({
+      _id: { $in: [...Directories.map((id) => id._id), id] },
+    });
 
+    await dirCollection.deleteOne({ _id: id });
     res.json({ message: "Directory and all contents deleted successfully" });
   } catch (error) {
     console.error("Delete Error:", error);

@@ -95,7 +95,7 @@ export const deleteFiles = async (req, res) => {
       .findOne({ _id: id, userId: user._id });
 
     if (!checkFile) {
-      return res.status(404).json({ error: "File not found in database" });
+      return res.status(404).json({ error: "File not found or unauthorized" });
     }
 
     const fileName = `${checkFile._id}${checkFile.extension}`;
@@ -104,25 +104,6 @@ export const deleteFiles = async (req, res) => {
 
     await rm(filePath, { force: true });
     await db.collection("files").deleteOne({ _id: id });
-
-    // FileJsonData.splice(fileIndex, 1);
-
-    // const parentDirData = DirectoriesDB.find(
-    //   (dir) => dir.id === fileData.parentDirId,
-    // );
-
-    // if (parentDirData && Array.isArray(parentDirData.files)) {
-    //   parentDirData.files = parentDirData.files.filter(
-    //     (fileId) => fileId !== id,
-    //   );
-    // }
-
-    // await writeFile("./filesDB.json", JSON.stringify(FileJsonData, null, 2));
-    // await writeFile(
-    //   "./DirectoriesDB.json",
-    //   JSON.stringify(DirectoriesDB, null, 2),
-    // );
-
     res.status(200).json({ message: "File deleted successfully" });
   } catch (err) {
     console.error("DELETE ERROR:", err);
@@ -135,7 +116,7 @@ export const getFile = async (req, res) => {
   const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
   const fileCollection = db.collection("files");
 
-  const fileData = await fileCollection.findOne({ _id: id });
+  const fileData = await fileCollection.findOne({ _id: id, userId: user._id });
 
   if (!fileData) {
     return res.status(404).json({ error: "File not found or unauthorized" });
