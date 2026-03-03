@@ -1,17 +1,23 @@
-import { ObjectId } from "mongodb";
+import User from "../model/User.model.js";
 
 export const authenticateUser = async (req, res, next) => {
-  const { userId } = req.cookies;
-  const db = req.db;
+  try {
+    const { userId } = req.cookies;
 
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized: No token provided" });
+    }
 
-  const user = await db
-    .collection("users")
-    .findOne({ _id: new ObjectId(userId) });
+    const user = await User.findById(userId);
 
-  if (!user) return res.status(401).json({ error: "Unauthorized" });
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized: User not found" });
+    }
 
-  req.user = user;
-  next();
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Auth Middleware Error:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };

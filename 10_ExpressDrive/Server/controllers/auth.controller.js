@@ -1,63 +1,60 @@
-import { writeFile } from "fs/promises";
-import { Db, ObjectId } from "mongodb";
+import mongoose from "mongoose";
+import Directory from "../model/directory.model.js";
+import User from "../model/User.model.js";
 
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    const db = req.db;
-    const dirCollection = db.collection("directories");
 
     if (!username || !email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Username, email, and password are required" });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
-    const existingUser = await db.collection("users").findOne({ email });
-
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    const userRootDir = await dirCollection.insertOne({
+    const userId = new mongoose.Types.ObjectId();
+    const rootDirId = new mongoose.Types.ObjectId();
+
+    await Directory.create({
+      _id: rootDirId,
       name: `root-${email}`,
       parentDirId: null,
+      userId: userId,
     });
 
-    const rootDirId = userRootDir.insertedId;
-
-    const createdUser = await db.collection("users").insertOne({
+    await User.create({
+      _id: userId,
       username,
       email,
       password,
-      rootDirId,
+      rootDirId: rootDirId,
     });
 
-    const userId = createdUser.insertedId;
-    await dirCollection.updateOne({ _id: rootDirId }, { $set: { userId } });
     res.status(200).json({ message: "Registration successful" });
   } catch (error) {
-    console.log(error);
-    res.status(400).json({ error: "Registration failed huaa" });
+    console.error("Registration Error:", error);
+    res.status(400).json({ error: "Registration failed" });
   }
 };
 
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const db = req.db;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
-    const user = await db.collection("users").findOne({ email, password });
+    const user = await User.findOne({ email, password });
 
     if (!user) {
       return res.status(401).json({ error: "Invalid Credentials!" });
     }
 
-    const userOId = user._id.toString();
+    const userOId = user._id;
     res.cookie("userId", userOId, {
       httpOnly: true,
       secure: true,

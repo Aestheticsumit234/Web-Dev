@@ -9,7 +9,7 @@ import File from "../model/Files.model.js";
 // read directory contents completed
 export const readDirectory = async (req, res) => {
   try {
-    const { user, db } = req;
+    const { user } = req;
     const id = req.params.id || user.rootDirId;
 
     const directoriesData = await Directory.findOne({
@@ -71,7 +71,7 @@ export const createDirectory = async (req, res) => {
 // rename directory completed
 export const renameDirectory = async (req, res) => {
   try {
-    const { user, db } = req;
+    const { user } = req;
     const { id } = req.params;
     const { newFilename } = req.body;
 
@@ -102,65 +102,66 @@ export const renameDirectory = async (req, res) => {
 };
 
 // delete directory
-export const deleteDirectory = async (req, res) => {
+export const deleteDirectory = async (req, res, next) => {
   try {
-    const { user, db } = req;
-    const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
-    const dirCollection = db.collection("directories");
-    const fileCollection = db.collection("files");
+    const { user } = req;
+    const id = req.params.id;
 
-    const dirData = await dirCollection.findOne(
-      { _id: id, userId: user._id },
-      { projection: { _id: 1 } },
-    );
+    if (!id) {
+      return res.status(400).json({ error: "Directory ID is required" });
+    }
+    const dirData = await Directory.findOne({ _id: id, userId: user._id });
 
     if (!dirData) {
       return res
         .status(403)
         .json({ error: "Directory not found or unauthorized" });
     }
-    const getDirectoryContents = async (parentId) => {
-      let fileData = await fileCollection
-        .find(
-          { parentDirId: parentId },
-          { projection: { _id: 1, extension: 1 } },
-        )
-        .toArray();
-      let Directories = await dirCollection
-        .find({ parentDirId: parentId }, { projection: { _id: 1 } })
-        .toArray();
-      for (let { _id } of Directories) {
-        const { fileData: childFile, Directories: childDirectories } =
-          await getDirectoryContents(new ObjectId(_id));
 
-        fileData = [...fileData, ...childFile];
-        Directories = [...Directories, ...childDirectories];
+    const getDeepContents = async (parentId) => {
+      let allFiles = await File.find({ parentDirId: parentId });
+      let allDirs = await Directory.find({ parentDirId: parentId });
+
+      for (const subDir of allDirs) {
+        const childContent = await getDeepContents(subDir._id);
+        allFiles = [...allFiles, ...childContent.allFiles];
+        allDirs = [...allDirs, ...childContent.allDirs];
       }
 
-      return {
-        fileData,
-        Directories,
-      };
+      return { allFiles, allDirs };
     };
 
-    const { fileData, Directories } = await getDirectoryContents(id);
+    const { allFiles, allDirs } = await getDeepContents(id);
 
-    for (let { _id, extension } of fileData) {
-      const filePath = safePath(BASE_PUBLIC, `${_id}${extension}`);
-      await rm(filePath, { force: true });
+    for (const file of allFiles) {
+      const fileName = `${file._id}${file.extension}`;
+      const filePath = safePath(BASE_PUBLIC, fileName);
+
+      try {
+        await rm(filePath, { force: true });
+      } catch (err) {
+        console.error(`Failed to delete physical file: ${filePath}`, err);
+      }
     }
 
-    await fileCollection.deleteMany({
-      _id: { $in: fileData.map((id) => id._id) },
-    });
-    await dirCollection.deleteMany({
-      _id: { $in: [...Directories.map((id) => id._id), id] },
-    });
+    const fileIds = allFiles.map((f) => f._id);
+    const dirIds = allDirs.map((d) => d._id);
 
-    await dirCollection.deleteOne({ _id: id });
-    res.json({ message: "Directory and all contents deleted successfully" });
+    dirIds.push(id);
+
+    if (fileIds.length > 0) {
+      await File.deleteMany({ _id: { $in: fileIds } });
+    }
+
+    await Directory.deleteMany({ _id: { $in: dirIds } });
+
+    res.json({
+      message: "Directory and all contents deleted successfully",
+      deletedFiles: fileIds.length,
+      deletedFolders: dirIds.length,
+    });
   } catch (error) {
     console.error("Delete Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    next(error);
   }
 };

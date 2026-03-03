@@ -1,20 +1,14 @@
-import { MongoClient } from "mongodb";
+import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
 
-export const client = new MongoClient(process.env.MONGO_URL);
-
-const connectDB = async () => {
-  await client.connect();
-  const db = client.db();
-  console.log("Database connected Sucessfully!");
-  return db;
+const connectDBS = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URL);
+    console.log("Database connected successfully!!");
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+  }
 };
 
-process.on("SIGINT", async () => {
-  await client.close();
-  console.log("Database Disconnected Sucessfully!");
-  process.exit(0);
-});
-
-export default connectDB;
+export default connectDBS;
