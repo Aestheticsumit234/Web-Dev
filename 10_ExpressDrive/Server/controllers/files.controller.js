@@ -1,9 +1,9 @@
 import { createWriteStream } from "fs";
-import fs from "fs/promises";
 import { rm } from "fs/promises";
 import path from "path";
 import { safePath } from "../utils/safePath.js";
 import { ObjectId } from "mongodb";
+import File from "../model/Files.model.js";
 
 const BASE_PUBLIC = path.resolve("./public");
 
@@ -40,13 +40,28 @@ export const uploadFiles = async (req, res) => {
     const fileId = insertedFile.insertedId.toString();
     const uploadPath = safePath(BASE_PUBLIC, `${fileId}${extension}`);
     const writeStream = createWriteStream(uploadPath);
+
+    // Pipe request directly to write stream
     req.pipe(writeStream);
 
-    req.on("end", async () => {
+    // Dhyan dein: writeStream events use karne chahiye
+    writeStream.on("finish", () => {
       return res.status(200).json({ message: "File uploaded successfully" });
     });
 
+    writeStream.on("error", async (err) => {
+      console.error("Write stream error:", err);
+      // Clean up failed files and DB records
+      await fileCollection.deleteOne({ _id: new ObjectId(fileId) });
+      await rm(uploadPath, { force: true });
+      if (!res.headersSent) {
+        res.status(500).json({ error: "File write failed" });
+      }
+    });
+
     req.on("error", async (err) => {
+      console.error("Request stream error:", err);
+      writeStream.destroy(); // Stop writing if request drops
       await fileCollection.deleteOne({ _id: new ObjectId(fileId) });
       await rm(uploadPath, { force: true });
       if (!res.headersSent) {
@@ -64,20 +79,23 @@ export const uploadFiles = async (req, res) => {
 export const renameFiles = async (req, res) => {
   try {
     const { user, db } = req;
-    const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
+    if (!req.params.id) {
+      return res.status(400).json({ error: "File ID is required" });
+    }
+    const id = new ObjectId(req.params.id);
     const { newFilename } = req.body;
 
-    const filePath = await db
+    const fileDoc = await db
       .collection("files")
       .findOne({ _id: id, userId: user._id });
 
-    if (!filePath) {
+    if (!fileDoc) {
       return res.status(404).json({ error: "File not found or unauthorized" });
     }
 
     await db
       .collection("files")
-      .updateOne({ _id: filePath._id }, { $set: { name: newFilename } });
+      .updateOne({ _id: fileDoc._id }, { $set: { name: newFilename } });
     res.status(200).json({ message: "File renamed successfully" });
   } catch (error) {
     console.log(error);
@@ -88,7 +106,10 @@ export const renameFiles = async (req, res) => {
 export const deleteFiles = async (req, res) => {
   try {
     const { user, db } = req;
-    const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
+    if (!req.params.id) {
+      return res.status(400).json({ error: "File ID is required" });
+    }
+    const id = new ObjectId(req.params.id);
 
     const checkFile = await db
       .collection("files")
@@ -99,7 +120,6 @@ export const deleteFiles = async (req, res) => {
     }
 
     const fileName = `${checkFile._id}${checkFile.extension}`;
-    console.log("-->", fileName);
     const filePath = safePath(BASE_PUBLIC, fileName);
 
     await rm(filePath, { force: true });
@@ -113,10 +133,13 @@ export const deleteFiles = async (req, res) => {
 
 export const getFile = async (req, res) => {
   const { user, db } = req;
-  const id = req.params.id ? new ObjectId(req.params.id) : user.rootDirId;
+  if (!req.params.id) {
+    return res.status(400).json({ error: "File ID is required" });
+  }
+  const id = new ObjectId(req.params.id);
   const fileCollection = db.collection("files");
 
-  const fileData = await fileCollection.findOne({ _id: id, userId: user._id });
+  const fileData = await File.findOne({ _id: id, userId: user._id });
 
   if (!fileData) {
     return res.status(404).json({ error: "File not found or unauthorized" });
@@ -128,11 +151,20 @@ export const getFile = async (req, res) => {
   try {
     const safe = safePath(BASE_PUBLIC, filePath);
 
+    const sendErrorHandler = (err) => {
+      if (err) {
+        console.error("Error sending file:", err);
+        if (!res.headersSent) {
+          res.status(404).json({ error: "Physical file missing from server" });
+        }
+      }
+    };
+
     if (req.query.action === "download") {
-      return res.download(safe, fileData.name);
+      return res.download(safe, fileData.name, sendErrorHandler);
     }
 
-    res.sendFile(safe);
+    res.sendFile(safe, sendErrorHandler);
   } catch (err) {
     console.log(err);
     return res.status(400).json({ error: "Invalid file path" });

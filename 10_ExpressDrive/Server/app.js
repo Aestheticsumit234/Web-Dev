@@ -7,6 +7,7 @@ import filesRoutes from "./routes/files.routes.js";
 import trashRoutes from "./routes/trash.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import connectDB from "./Storage/connectDB.js";
+import "./Storage/mongoesDelete.js";
 
 // Database conmnection
 try {

@@ -1,20 +1,18 @@
 import { rm } from "fs/promises";
-import path from "path"; // delete krna hai
-import { safePath } from "../utils/safePath.js"; // iska koi kaam nhi hai ab
 import { ObjectId } from "mongodb";
-
 const BASE_PUBLIC = path.resolve("./public");
+import path from "path";
+import { safePath } from "../utils/safePath.js";
+import Directory from "../model/directory.model.js";
+import File from "../model/Files.model.js";
 
-// read directory contents
+// read directory contents completed
 export const readDirectory = async (req, res) => {
   try {
     const { user, db } = req;
-    const id = req.params.id
-      ? new ObjectId(req.params.id)
-      : new ObjectId(user.rootDirId);
-    const dirCollection = db.collection("directories");
+    const id = req.params.id || user.rootDirId;
 
-    const directoriesData = await dirCollection.findOne({
+    const directoriesData = await Directory.findOne({
       _id: id,
       userId: user._id,
     });
@@ -22,13 +20,12 @@ export const readDirectory = async (req, res) => {
     if (!directoriesData) {
       return res.status(404).json({ message: "Directory not found" });
     }
-    const file = await db
-      .collection("files")
-      .find({ parentDirId: directoriesData._id })
-      .toArray();
-    const directories = await dirCollection
-      .find({ parentDirId: directoriesData._id })
-      .toArray();
+    const file = await File.find({
+      parentDirId: directoriesData._id,
+    }).lean();
+    const directories = await Directory.find({
+      parentDirId: directoriesData._id,
+    }).lean();
 
     res.json({
       ...directoriesData,
@@ -41,16 +38,17 @@ export const readDirectory = async (req, res) => {
   }
 };
 
+// create directory completed
 export const createDirectory = async (req, res) => {
   try {
-    const { user, db } = req;
-    const parentDirId = req.params.parentdirId
-      ? new ObjectId(req.params.parentdirId)
-      : user.rootDirId;
+    const { user } = req;
+    const parentDirId = req.params.parentdirId || user.rootDirId;
     const dirname = req.headers.dirname;
-    const dirCollection = db.collection("directories");
 
-    const parentDir = await dirCollection.findOne({ _id: parentDirId });
+    const parentDir = await Directory.findOne({
+      _id: parentDirId,
+      userId: user._id,
+    });
 
     if (!parentDir) {
       return res
@@ -58,7 +56,7 @@ export const createDirectory = async (req, res) => {
         .json({ error: "Parent directory not found or unauthorized" });
     }
 
-    const saveDir = await dirCollection.insertOne({
+    await Directory.insertOne({
       name: dirname,
       userId: user._id,
       parentDirId,
@@ -70,19 +68,19 @@ export const createDirectory = async (req, res) => {
   }
 };
 
+// rename directory completed
 export const renameDirectory = async (req, res) => {
   try {
     const { user, db } = req;
     const { id } = req.params;
     const { newFilename } = req.body;
-    const dirCollection = db.collection("directories");
 
     if (!id || !newFilename) {
       return res.status(400).json({ error: "Invalid data" });
     }
 
-    const dirData = await dirCollection.findOne({
-      _id: new ObjectId(id),
+    const dirData = await Directory.findById({
+      _id: id,
       userId: user._id,
     });
 
@@ -92,7 +90,7 @@ export const renameDirectory = async (req, res) => {
         .json({ error: "Directory not found or unauthorized" });
     }
 
-    await dirCollection.updateOne(
+    await Directory.updateOne(
       { _id: dirData._id },
       { $set: { name: newFilename } },
     );
@@ -103,6 +101,7 @@ export const renameDirectory = async (req, res) => {
   }
 };
 
+// delete directory
 export const deleteDirectory = async (req, res) => {
   try {
     const { user, db } = req;
@@ -130,7 +129,7 @@ export const deleteDirectory = async (req, res) => {
       let Directories = await dirCollection
         .find({ parentDirId: parentId }, { projection: { _id: 1 } })
         .toArray();
-      for (let { _id, name } of Directories) {
+      for (let { _id } of Directories) {
         const { fileData: childFile, Directories: childDirectories } =
           await getDirectoryContents(new ObjectId(_id));
 
