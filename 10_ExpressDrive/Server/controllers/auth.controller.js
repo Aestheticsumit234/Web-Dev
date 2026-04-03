@@ -1,5 +1,7 @@
+import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import Directory from "../model/directory.model.js";
+import Session from "../model/session.model.js";
 import User from "../model/User.model.js";
 
 export const register = async (req, res) => {
@@ -15,6 +17,8 @@ export const register = async (req, res) => {
       return res.status(400).json({ error: "Email already exists" });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const userId = new mongoose.Types.ObjectId();
     const rootDirId = new mongoose.Types.ObjectId();
 
@@ -29,7 +33,7 @@ export const register = async (req, res) => {
       _id: userId,
       username,
       email,
-      password,
+      password: hashedPassword,
       rootDirId: rootDirId,
     });
 
@@ -45,17 +49,27 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
+      return res.status(400).json({ error: "invalid email or password" });
     }
 
-    const user = await User.findOne({ email, password });
+    const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({ error: "Invalid Credentials!" });
+      return res.status(401).json({ error: "something went wrong." });
+    }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "somthing went wrong" });
     }
 
-    const userOId = user._id;
-    res.cookie("userId", userOId, {
+    const session = await Session.create({ userId: user._id });
+
+    if (!session) {
+      return res.status(500).json({ error: "Session creation failed" });
+    }
+
+    res.cookie("sessionId", session._id, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
@@ -65,10 +79,10 @@ export const login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       user: {
-        id: userOId,
+        _id: user._id,
         username: user.username,
         email: user.email,
-        password: user.password,
+        rootDirId: user.rootDirId,
       },
     });
   } catch (error) {
@@ -78,7 +92,7 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    res.clearCookie("userId");
+    res.clearCookie("sessionId");
     console.log("Logout requested");
     res.status(200).json({
       message: "Logout successful",
@@ -99,10 +113,8 @@ export const getMe = async (req, res) => {
     res.status(200).json({
       message: "User found successfully!",
       user: {
-        id: user._id,
         username: user.username,
         email: user.email,
-        password: user.password,
       },
     });
   } catch (error) {

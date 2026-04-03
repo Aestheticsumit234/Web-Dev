@@ -1,17 +1,17 @@
-import { Link } from "react-router-dom";
 import {
-  Folder,
-  File,
   CheckSquare,
-  Square,
-  Edit2,
-  Trash2,
-  ExternalLink,
   Download,
-  Image as ImageIcon,
-  FileText,
+  Edit2,
+  ExternalLink,
+  File,
   FileCode,
+  FileText,
+  Folder,
+  Image as ImageIcon,
+  Square,
+  Trash2,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const getFileIcon = (filename) => {
   if (!filename.includes("."))
@@ -89,6 +89,7 @@ export const ItemRow = ({
           <>
             <a
               href={`${baseUrl}/files/${id}`}
+              target="_blank"
               rel="noreferrer"
               className="p-1.5 text-gray-400 hover:text-blue-500 transition cursor-pointer"
             >

@@ -9,7 +9,6 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  // 1. Lazy initialization: Page load hote hi directly localStorage se data lo
   const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -23,13 +22,9 @@ export const AuthProvider = ({ children }) => {
     return null;
   });
 
-  // 2. Agar user object hai, toh default 'true' hoga, warna 'false'
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!user);
 
-  // 3. Loading default false kardo kyunki ab delay nahi hai
   const [loading, setLoading] = useState(false);
-
-  // (Ab yahan woh useEffect likhne ki zarurat hi nahi hai, humne delete kar diya!)
 
   const login = (userData) => {
     setIsAuthenticated(true);
@@ -39,6 +34,7 @@ export const AuthProvider = ({ children }) => {
 
   const getProfile = (updatedData) => {
     const newData = { ...user, ...updatedData };
+
     setUser(newData);
     localStorage.setItem("user", JSON.stringify(newData));
   };
@@ -47,7 +43,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await fetch("http://localhost:8080/auth/logout", {
         method: "POST",
-        credentials: "include", // Backend se cookie clear karne ke liye
+        credentials: "include",
       });
     } catch (error) {
       console.error("Error logging out from server:", error);
@@ -55,7 +51,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("user");
       setIsAuthenticated(false);
       setUser(null);
-      // window.location.href ki jagah tum navigate() bhi use kar sakte ho agar protected route use kar rahe ho, par ye bhi thik hai.
       window.location.href = "/login";
     }
   };

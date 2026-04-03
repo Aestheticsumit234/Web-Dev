@@ -1,14 +1,20 @@
+import Session from "../model/session.model.js";
 import User from "../model/User.model.js";
 
 export const authenticateUser = async (req, res, next) => {
   try {
-    const { userId } = req.cookies;
+    const { sessionId } = req.cookies;
 
-    if (!userId) {
+    if (!sessionId) {
       return res.status(401).json({ error: "Unauthorized: No token provided" });
     }
 
-    const user = await User.findById(userId);
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res.status(401).json({ error: "Unauthorized: Session not found" });
+    }
+
+    const user = await User.findById(session.userId);
 
     if (!user) {
       return res.status(401).json({ error: "Unauthorized: User not found" });

@@ -1,14 +1,14 @@
-import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import toast, { Toaster } from "react-hot-toast";
-import { useAuth } from "./contexts/AuthContext";
 import { Lock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
 
-import { Header } from "./components/Header";
 import { ActionModal } from "./components/ActionModal";
+import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
+import { Header } from "./components/Header";
 import { ItemRow } from "./components/ItemRow";
 import { UploadStatus } from "./components/UploadStatus";
-import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 
 function DirectoryView() {
   const BASE_URL = "http://localhost:8080";
@@ -314,7 +314,7 @@ function DirectoryView() {
         />
       )}
 
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="bg-white rounded shadow-sm border overflow-hidden">
         <div className="grid grid-cols-12 gap-4 border-b bg-gray-50 px-6 py-3 text-xs font-semibold uppercase text-gray-500">
           <div className="col-span-1">Select</div>
           <div className="col-span-5">Name</div>

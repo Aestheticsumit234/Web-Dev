@@ -2,7 +2,7 @@ import { Loader2, X } from "lucide-react";
 
 export const UploadStatus = ({ progress, onAbort }) => {
   return (
-    <div className="fixed bottom-4 right-4 bg-white shadow-2xl rounded-lg border p-4 w-72">
+    <div className="fixed bottom-4 right-4 bg-white shadow-2xl rounded border p-4 w-72">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-blue-600">
           <Loader2 className="animate-spin" size={16} /> Uploading...

@@ -1,17 +1,17 @@
-import { useState, useRef, useEffect } from "react";
 import {
-  Folder,
-  Trash2,
-  Plus,
-  UploadCloud,
-  LogOut,
-  User,
   CircleUserRound,
+  Folder,
+  LogOut,
   Menu,
+  Plus,
+  Trash2,
+  UploadCloud,
+  User,
   X,
 } from "lucide-react";
-import { ProfileModal } from "./ProfileModal";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { ProfileModal } from "./ProfileModal";
 
 export const Header = ({
   selectedCount,
@@ -41,7 +41,7 @@ export const Header = ({
 
   return (
     <>
-      <header className="mb-6 bg-white p-4 shadow-sm rounded-lg border flex flex-col sm:flex-row sm:items-center sm:justify-between transition-all">
+      <header className="mb-6 bg-white p-4 shadow-sm rounded border flex flex-col sm:flex-row sm:items-center sm:justify-between transition-all">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <h1 className="text-xl font-bold flex items-center gap-2 shrink-0">
             <Folder className="text-blue-500" />

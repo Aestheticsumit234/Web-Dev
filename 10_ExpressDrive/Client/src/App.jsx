@@ -1,13 +1,13 @@
 import {
+  Navigate,
+  Route,
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate,
 } from "react-router-dom";
+import LoginForm from "./components/LoginForm";
+import RegisterForm from "./components/RegisterForm";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import DirectoryView from "./DirectoryView";
-import RegisterForm from "./components/RegisterForm";
-import LoginForm from "./components/LoginForm";
 
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
